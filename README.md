@@ -1,7 +1,7 @@
 # MMM-MyTeams-DriveToMatch
 # Author: gitgitaway
 
-A MagicMirror² module that automatically detects your team`s next fixture and shows quickest and shortest driving routes to match venue using real-time traffic data from TomTom API (Free API Key required).
+A MagicMirror² module that automatically detects your team`s next fixture and shows the quickest and shortest driving routes to the match venue using real-time traffic data from the TomTom API (Free API Key required) and data from thesportsdb.com (Free API) with backup from FootballWebPages.com scrapper.  The module works for all football teams and all leagues (All domestic and European competitions)
 
 ## Features
 
@@ -655,3 +655,4 @@ MagicMirror²: The amazing smart mirror platform
 
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
