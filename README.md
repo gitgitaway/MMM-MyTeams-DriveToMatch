@@ -1,4 +1,5 @@
 # MMM-MyTeams-DriveToMatch
+# Author: gitgitaway
 
 A MagicMirror² module that automatically detects your team`s next fixture and shows quickest and shortest driving routes to match venue using real-time traffic data from TomTom API (Free API Key required).
 
@@ -99,17 +100,20 @@ No additional configuration is required unless you need to customize these value
 
 ## Multi-Language Support
 
-MMM-MyTeams-DriveToMatch supports **8 languages** out of the box! The module automatically detects your MagicMirror's configured language.
+MMM-MyTeams-DriveToMatch supports **9 languages** out of the box! The module automatically detects your MagicMirror's configured language.
 
 ### Supported Languages
-- 🇬🇧 **English** (`en`)
-- 🇪🇸 **Spanish** (`es`)
-- 🇫🇷 **French** (`fr`)
-- 🇩🇪 **German** (`de`)
-- 🇮🇹 **Italian** (`it`)
-- 🇳🇱 **Dutch** (`nl`)
-- 🇵🇹 **Portuguese** (`pt`)
-- 🏴󠁧󠁢󠁳󠁣󠁴󠁿 **Scottish Gaelic** (`gd`)
+| Language | Code | Example |
+|----------|------|---------|
+| :scotland: Scottish Gaelic | `gd` | `language: "gd"` |
+| :ireland: Irish Gaelic | `ga` | `language: "ga"` |
+| 🇬🇧 English | `en` | `language: "en"` |
+| 🇪🇸 Spanish | `es` | `language: "es"` |
+| 🇫🇷 French | `fr` | `language: "fr"` |
+| 🇩🇪 German | `de` | `language: "de"` |
+| 🇮🇹 Italian | `it` | `language: "it"` |
+| 🇳🇱 Dutch | `nl` | `language: "nl"` |
+| 🇵🇹 Portuguese | `pt` | `language: "pt"` |
 
 ### How to Change Language
 
@@ -648,5 +652,6 @@ MagicMirror²: The amazing smart mirror platform
 - TomTom routing with traffic
 - Scottish grounds database
 - Real-time route updates
+
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
