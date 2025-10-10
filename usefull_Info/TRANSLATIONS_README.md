@@ -6,17 +6,17 @@ MMM-MyTeams-DriveToMatch now supports **9 languages** out of the box! The module
 
 ## Supported Languages
 
-| Language | Code | Translation File |
-|----------|------|------------------|
-| England:`**English** | `en` | `en.json` |
-| Spain: **Spanish** | `es` | `es.json` |
-| **French** | `fr` | `fr.json` |
-| **German** | `de` | `de.json` |
-| **Italian** | `it` | `it.json` |
-| **Dutch** | `nl` | `nl.json` |
-| **Portuguese** | `pt` | `pt.json` |
-| **Scottish Gaelic** | `gd` | `gd.json` |
-| **Irish Gaelic** | `ga` | `ga.json` |
+| Language | Code | Example |
+|----------|------|---------|
+| :scotland: Scottish Gaelic | `gd` | `language: "gd"` |
+| :ireland: Irish Gaelic | `ga` | `language: "ga"` |
+| 🇬🇧 English | `en` | `language: "en"` |
+| 🇪🇸 Spanish | `es` | `language: "es"` |
+| 🇫🇷 French | `fr` | `language: "fr"` |
+| 🇩🇪 German | `de` | `language: "de"` |
+| 🇮🇹 Italian | `it` | `language: "it"` |
+| 🇳🇱 Dutch | `nl` | `language: "nl"` |
+| 🇵🇹 Portuguese | `pt` | `language: "pt"` |
 
 ## How to Use
 
@@ -343,4 +343,5 @@ Potential future additions:
 **Last Updated:** January 2025  
 **Supported Languages:** 9  
 **Module:** MMM-MyTeams-DriveToMatch
+
 
