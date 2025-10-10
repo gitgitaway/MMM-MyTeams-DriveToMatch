@@ -1,0 +1,35 @@
+{
+  "name": "mmm-myteams-drivetomatch",
+  "version": "1.0.0",
+  "description": "MagicMirror² module showing driving routes to your team's next fixture",
+  "main": "MMM-MyTeams-DriveToMatch.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "MagicMirror",
+    "module",
+    "football",
+    "soccer",
+    "routes",
+    "traffic",
+    "TomTom",
+    "Celtic",
+    "Scottish football",
+    "fixtures"
+  ],
+  "author": "Assistant",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "node-fetch": "^2.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/MMM-MyTeams-DriveToMatch.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/MMM-MyTeams-DriveToMatch/issues"
+  },
+  "homepage": "https://github.com/yourusername/MMM-MyTeams-DriveToMatch#readme"
+}

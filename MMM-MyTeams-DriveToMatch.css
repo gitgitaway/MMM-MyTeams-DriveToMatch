@@ -1,0 +1,400 @@
+/* MMM-MyTeams-DriveToMatch.css
+ * 
+ * Styling for MMM-MyTeams-DriveToMatch module
+ * Celtic-themed colors and responsive design
+ * 
+ * By: gitgitaway with AI Assistance
+ * MIT Licensed
+ */
+
+.MMM-MyTeams-DriveToMatch {
+    font-family: "Roboto", sans-serif;
+    color: #ffffff;
+    max-width: 550px;
+    max-height: 250px;
+    margin-right: 20px;
+}
+
+/* Loading and Error States */
+.MMM-MyTeams-DriveToMatch .loading,
+.MMM-MyTeams-DriveToMatch .error,
+.MMM-MyTeams-DriveToMatch .no-fixture {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+}
+
+.MMM-MyTeams-DriveToMatch .loading {
+    background: rgba(1, 135, 73, 0.1);
+    border: 1px solid rgba(1, 135, 73, 0.3);
+}
+
+.MMM-MyTeams-DriveToMatch .error {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: #dc3545;
+}
+
+.MMM-MyTeams-DriveToMatch .no-fixture {
+    background: rgba(108, 117, 125, 0.1);
+    border: 1px solid rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+}
+
+.MMM-MyTeams-DriveToMatch .loading i,
+.MMM-MyTeams-DriveToMatch .error i,
+.MMM-MyTeams-DriveToMatch .no-fixture i {
+    display: block;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+/* Fixture Header */
+.MMM-MyTeams-DriveToMatch .fixture-header {
+    background: linear-gradient(135deg, rgba(1, 135, 73, 0.2), rgba(255, 215, 0, 0.1));
+    border: 1px solid rgba(1, 135, 73, 0.4);
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.MMM-MyTeams-DriveToMatch .teams {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.MMM-MyTeams-DriveToMatch .team {
+    padding: 3px 8px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.MMM-MyTeams-DriveToMatch .team.highlight {
+    background: rgba(1, 135, 73, 0.3);
+    color: #FFD700;
+    border: 1px solid rgba(255, 215, 0, 0.5);
+}
+
+.MMM-MyTeams-DriveToMatch .vs {
+    margin: 0 15px;
+    color: #cccccc;
+    font-weight: normal;
+}
+
+.MMM-MyTeams-DriveToMatch .match-details {
+    font-size: 14px;
+    color: #cccccc;
+}
+
+.MMM-MyTeams-DriveToMatch .date {
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 3px;
+}
+
+.MMM-MyTeams-DriveToMatch .venue {
+    margin-bottom: 3px;
+}
+
+.MMM-MyTeams-DriveToMatch .venue i {
+    margin-right: 5px;
+    color: #FFD700;
+}
+
+.MMM-MyTeams-DriveToMatch .competition {
+    font-style: italic;
+    color: #999999;
+}
+
+/* Routes Section */
+.MMM-MyTeams-DriveToMatch .routes-section {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin-bottom: 8px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+    padding-bottom: 5px;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-title i {
+    margin-right: 8px;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-loading {
+    text-align: center;
+    padding: 12px;
+    color: #cccccc;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-loading i {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #FFFFFF;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-error {
+    text-align: center;
+    padding: 12px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 8px;
+    color: #ffc107;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-error i {
+    display: block;
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #ffc107;
+}
+
+.MMM-MyTeams-DriveToMatch .routes-error span {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Routes Container - Flexbox for side-by-side layout */
+.MMM-MyTeams-DriveToMatch .routes-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
+/* Individual Routes */
+.MMM-MyTeams-DriveToMatch .route {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px;
+    transition: all 0.3s ease;
+    flex: 0 1 auto;
+    width: 175px;
+    min-width: 175px;
+    max-width: 175px;
+}
+
+.MMM-MyTeams-DriveToMatch .route:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(1, 135, 73, 0.4);
+}
+
+.MMM-MyTeams-DriveToMatch .route-1 {
+    border-left: 3px solid #018749;
+}
+
+.MMM-MyTeams-DriveToMatch .route-1 {
+    border-right: 3px solid #FFFFFF;
+}
+
+.MMM-MyTeams-DriveToMatch .route-2 {
+    border-left: 3px solid #018749;
+}
+
+.MMM-MyTeams-DriveToMatch .route-2 {
+    border-right: 3px solid #FFFFFF;
+}
+
+.MMM-MyTeams-DriveToMatch .route-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    gap: 8px;
+}
+
+.MMM-MyTeams-DriveToMatch .route-label {
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* Clickable Route Type Badge */
+.MMM-MyTeams-DriveToMatch .clickable-badge {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.MMM-MyTeams-DriveToMatch .clickable-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+.MMM-MyTeams-DriveToMatch .clickable-badge:active {
+    transform: scale(0.95);
+}
+
+.MMM-MyTeams-DriveToMatch .fastest {
+    background: rgba(1, 135, 73, 0.3);
+    color: #FFD700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.MMM-MyTeams-DriveToMatch .alternative {
+    background: rgba(255, 215, 0, 0.2);
+    color: #FFD700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.MMM-MyTeams-DriveToMatch .route-details {
+    font-size: 14px;
+}
+
+.MMM-MyTeams-DriveToMatch .time-distance {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+}
+
+.MMM-MyTeams-DriveToMatch .duration {
+    font-weight: bold;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+.MMM-MyTeams-DriveToMatch .distance {
+    color: #cccccc;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.MMM-MyTeams-DriveToMatch .delay {
+    color: #ff6b35;
+    background: rgba(255, 107, 53, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.MMM-MyTeams-DriveToMatch .waypoints {
+    color: #999999;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.MMM-MyTeams-DriveToMatch .waypoints i {
+    margin-right: 5px;
+    color: #FFD700;
+}
+
+.MMM-MyTeams-DriveToMatch .fuel-cost {
+    color: #4CAF50;
+    font-size: 13px;
+    font-weight: bold;
+    margin-top: 4px;
+    padding: 3px 6px;
+    background: rgba(76, 175, 80, 0.15);
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.MMM-MyTeams-DriveToMatch .fuel-cost i {
+    margin-right: 5px;
+    color: #4CAF50;
+}
+
+/* Footer - Last Update Timestamp */
+.MMM-MyTeams-DriveToMatch .route-footer {
+    margin-top: 6px;
+    padding: 5px 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    text-align: center;
+    font-size: 12px;
+    color: #999999;
+}
+
+.MMM-MyTeams-DriveToMatch .route-footer i {
+    margin-right: 6px;
+    color: #FFD700;
+}
+
+.MMM-MyTeams-DriveToMatch .route-footer span {
+    color: #cccccc;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .MMM-MyTeams-DriveToMatch {
+        max-width: 100%;
+    }
+    
+    .MMM-MyTeams-DriveToMatch .teams {
+        font-size: 16px;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .MMM-MyTeams-DriveToMatch .vs {
+        margin: 5px 0;
+    }
+    
+    .MMM-MyTeams-DriveToMatch .time-distance {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+}
+
+/* Animation for loading spinner */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.MMM-MyTeams-DriveToMatch .fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Fade in animation */
+.MMM-MyTeams-DriveToMatch .route {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Highlight animation for updates */
+.MMM-MyTeams-DriveToMatch .route.updated {
+    animation: highlight 1s ease-in-out;
+}
+
+@keyframes highlight {
+    0% { background: rgba(1, 135, 73, 0.3); }
+    50% { background: rgba(1, 135, 73, 0.1); }
+    100% { background: rgba(255, 255, 255, 0.05); }
+}

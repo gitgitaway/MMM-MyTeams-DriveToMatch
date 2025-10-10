@@ -1,0 +1,140 @@
+Country,team_Name,team_ID,domestic_League_Name,domestic_League_ID,national_Cup_Name,national_Cup_ID,league_Cup_Name,league_Cup_ID
+England,Arsenal,133604,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Aston Villa,133601,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Bournemouth,134301,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Brentford,134355,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Chelsea,133610,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Crystal Palace,133632,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Everton,133615,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Fulham,133600,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Ipswich Town,133622,English League Championship,4329,FA Cup,4424,EFL Cup,4426
+England,Leicester City,133626,English League Championship,4329,FA Cup,4424,EFL Cup,4426
+England,Liverpool,133602,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Manchester City,133613,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Manchester United,133612,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Newcastle United,134777,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Nottingham Forest,133720,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Southampton,134778,English League Championship,4329,FA Cup,4424,EFL Cup,4426
+England,Tottenham Hotspur,133616,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,West Ham United,133636,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+England,Wolverhampton Wanderers,133599,English Premier League,4328,FA Cup,4424,EFL Cup,4426
+France,Angers,134709,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Auxerre,134788,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Brest,133704,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Le Havre,133862,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Lens,133822,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Lille,133711,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Lyon,133713,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Marseille,133707,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Montpellier,133709,French Ligue 2,4401,Coupe de France,4430,Coupe de la Ligue,4432
+France,Nantes,133861,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Nice,133712,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Paris Saint-Germain Handball,136776,French LNH Division 1,4536,Coupe de France,4430,Coupe de la Ligue,4432
+France,Reims,144106,_No League Ice Hockey,4838,Coupe de France,4430,Coupe de la Ligue,4432
+France,Rennes,133719,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Strasbourg,133882,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+France,Toulouse,133703,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+Germany,Bayer Leverkusen,133666,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Bayern Munich,133664,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Bochum,133839,German 2. Bundesliga,4399,DFB Pokal,4425,,
+Germany,Borussia Dortmund,133650,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Borussia Mönchengladbach,134779,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Eintracht Frankfurt,133814,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,FC Augsburg,133652,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Freiburg,133653,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Hoffenheim,133657,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Holstein Kiel,136027,German 2. Bundesliga,4399,DFB Pokal,4425,,
+Germany,Mainz,133665,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,RB Leipzig,134695,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,St Pauli,133813,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Stuttgart,133660,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Union Berlin,134690,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Werder Bremen,133662,German Bundesliga,4331,DFB Pokal,4425,,
+Germany,Wolfsburg,133655,German Bundesliga,4331,DFB Pokal,4425,,
+Italy,AC Milan,133667,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Atalanta,134782,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Bologna,134781,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Cagliari,134783,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Como,134243,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Empoli,133695,Italian Serie B,4394,Coppa Italia,4431,,
+Italy,Fiorentina,133674,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Genoa,133675,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Inter Milan,133681,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Juventus,133676,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Lazio,133668,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Lecce,133678,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Monza,134270,Italian Serie B,4394,Coppa Italia,4431,,
+Italy,Napoli,133670,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Parma,135728,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Roma,133682,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Torino,133687,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Udinese,133679,Italian Serie A,4332,Coppa Italia,4431,,
+Italy,Venezia,134234,Italian Serie B,4394,Coppa Italia,4431,,
+Monaco,Monaco,133823,French Ligue 1,4334,Coupe de France,4430,Coupe de la Ligue,4432
+Portugal,AVS,147479,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Arouca,134387,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Benfica,134108,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Boavista,134588,_No League Soccer,4834,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Braga,134098,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Casa Pia,138864,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,FC Porto,134114,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Famalicao,136854,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Farense,138853,Portuguese LigaPro,4662,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Gil Vicente,134113,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Moreirense,134112,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Rio Ave,134107,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Santa Clara,136192,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Portugal,Sporting CP,135708,Portuguese Primeira Liga,4344,Taca de Portugal,4433,Taca da Liga,4434
+Scotland,Aberdeen,133638,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Airdrieonians,137821,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Ayr United,134135,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Celtic,133647,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Dundee,133942,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Dundee United,133644,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Falkirk,133838,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Heart of Midlothian,133643,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Hibernian,133646,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Kilmarnock,133645,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Livingston,134133,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Motherwell,133640,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Partick Thistle,134134,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Queen's Park,138105,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Raith Rovers,134793,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Rangers,133642,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,Ross County,133940,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,St Johnstone,133639,Scottish Championship,4395,Scottish Cup,4429,Scottish League Cup,4428
+Scotland,St Mirren,133649,Scottish Premier League,4330,Scottish Cup,4429,Scottish League Cup,4428
+Spain,Athletic Bilbao,133727,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Atlético Madrid,133729,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Barcelona,133739,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Celta Vigo,133937,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Espanyol,133734,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Getafe,133731,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Girona,134700,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Las Palmas,134259,Spanish La Liga 2,4400,Copa del Rey,4427,,
+Spain,Leganés,134701,Spanish La Liga 2,4400,Copa del Rey,4427,,
+Spain,Mallorca,133733,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Osasuna,133730,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Rayo Vallecano,133728,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Real Betis,133722,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Real Madrid,133738,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Real Sociedad,133724,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Sevilla,133735,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Valencia,133725,Spanish La Liga,4335,Copa del Rey,4427,,
+Spain,Villarreal,133740,Spanish La Liga,4335,Copa del Rey,4427,,
+The Netherlands,AZ Alkmaar,133767,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Ajax,133772,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Almere City,137996,Dutch Eerste Divisie,4641,KNVB Cup,4435,,
+The Netherlands,Feyenoord,133758,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Fortuna Sittard,134264,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Go Ahead Eagles,134304,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Groningen,133762,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Heerenveen,133759,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,NAC Breda,133773,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,NEC Nijmegen,133760,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,PEC Zwolle,133936,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,PSV Eindhoven,133768,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,RKC Waalwijk,133765,Dutch Eerste Divisie,4641,KNVB Cup,4435,,
+The Netherlands,Sparta Rotterdam,133866,Dutch Eredivisie,4337,KNVB Cup,4435,,
+The Netherlands,Willem II,133827,Dutch Eerste Divisie,4641,KNVB Cup,4435,,
+Uruguay,Nacional,145994,_No League Basketball,4836,Taca de Portugal,4433,Taca da Liga,4434
