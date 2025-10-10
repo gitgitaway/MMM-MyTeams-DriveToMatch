@@ -627,6 +627,17 @@ FotballWebPages: Fixture data API
 TomTom: Routing and traffic data API
 MagicMirror²: The amazing smart mirror platform
 
+## Notes
+This is the 6th module in my Celtic themed man cave magicmirror.  
+- ![](./screenshots/celticmm-screenshot.png)
+  
+-The other modules can be found here:- 
+- Module 1: https://github.com/gitgitaway/MMM-MyTeams-Clock
+- Module 2: https://github.com/gitgitaway/MMM-MyTeams-LeagueTable
+- Module 3: https://github.com/gitgitaway/MMM-MyTeams-Fixtures
+- Module 4: https://github.com/gitgitaway/MMM-JukeBox
+- Module 5: https://github.com/gitgitaway/MMM-MyTeams-Honours
+
 ## Changelog
 
 ### v1.2.0 (Latest - 2025-10-05)
@@ -655,4 +666,5 @@ MagicMirror²: The amazing smart mirror platform
 
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
 
