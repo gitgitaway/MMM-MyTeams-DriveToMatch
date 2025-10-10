@@ -8,8 +8,8 @@ MMM-MyTeams-DriveToMatch now supports **9 languages** out of the box! The module
 
 | Language | Code | Translation File |
 |----------|------|------------------|
-| **English** | `en` | `en.json` |
-| **Spanish** | `es` | `es.json` |
+| England:`**English** | `en` | `en.json` |
+| Spain: **Spanish** | `es` | `es.json` |
 | **French** | `fr` | `fr.json` |
 | **German** | `de` | `de.json` |
 | **Italian** | `it` | `it.json` |
@@ -343,3 +343,4 @@ Potential future additions:
 **Last Updated:** January 2025  
 **Supported Languages:** 9  
 **Module:** MMM-MyTeams-DriveToMatch
+
