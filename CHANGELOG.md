@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.4.3] - 2025-10-18 (Initial release)
+## [1.4.3] - 2025-10-19 (Initial release)
 
 ### 🏟️ Stadium Database Expansion
 
@@ -155,4 +155,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Turn-by-Turn Directions | 1.4.0 | ✅ Active |
 | Route Saving | 1.4.0 | ✅ Active |
 | Stadium Database (161 teams) | 1.3.0 - 1.4.3 | ✅ Active |
+
 | Adaptive Cache TTL | Unreleased | 🔄 In Progress |
