@@ -121,7 +121,7 @@ config: {
 
 ## 🏟️ Supported Teams
 
-Database includes **161 teams** across **26 countries**:
+Database includes **500+ teams** across **26 countries**:
 
 - **Scotland**: 44 teams (all professional leagues)
 - **England**: 51 teams (Premier League + Championship)
@@ -221,10 +221,10 @@ See caching configuration to optimize API usage.
 
 | Version | Status | Date |
 |---------|--------|------|
-| v1.4.3 | Latest | 2025-01-15 |
-| v1.4.2 | Stable | 2025-10-10 |
-| v1.4.1 | Archive | 2025-01-XX |
-| v1.4.0 | Archive | 2025-01-XX |
+| v1.4.3 | Latest | 2025-10-15 |
+| v1.4.2 | Stable | 2025-10-xx  |
+| v1.4.1 | Archive | 2025-10-XX |
+| v1.4.0 | Archive | 2025-10-02 |
 
 See **[CHANGELOG.md](CHANGELOG.md)** for complete version history.
 
@@ -255,5 +255,6 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 5. **Console Logs**: Use browser dev tools (F12) to see detailed errors
 
 ---
+
 
 **For complete guides, see documentation links at top of README.**
