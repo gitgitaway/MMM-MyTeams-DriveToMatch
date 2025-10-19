@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [WIP - Unreleased]
 
 ### 🚀 Performance & Troubleshooting Enhancements
 
@@ -157,3 +157,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Stadium Database (161 teams) | 1.3.0 - 1.4.3 | ✅ Active |
 
 | Adaptive Cache TTL | Unreleased | 🔄 In Progress |
+
