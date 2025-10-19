@@ -20,7 +20,7 @@ A MagicMirror² module that automatically detects your team`s next fixture and s
 
 
 ## Screenshots
-*Examples shown with routes to away venues but module also show routes to your home teams stadium - route based on user configarable Home lat/Lon*
+*Examples shown with routes to away venues but module also show routes to your home teams stadium - route based on user configarable Home lat/Lon* to match venue location.
 - 1: ![Arsenal v Bayern Munich ](./screenshots/screenshotRoute1.png)
 - 2: ![Eintract Frankfurt v Liverpool](./screenshots/screenshotRoute2.png)
 - 3: ![Feyenoord v Celtic ](./screenshots/screenshotRoute3.png)
@@ -666,5 +666,6 @@ This is the 6th module in my Celtic themed man cave magicmirror.
 
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
 
 
