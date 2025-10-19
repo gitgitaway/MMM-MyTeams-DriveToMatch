@@ -126,7 +126,13 @@ Database includes **500+ teams** across **26 countries**:
 - **England**: 51 teams (Premier League + Championship)
 - **Major European Leagues**: Spain, Italy, Germany, France, Portugal, Netherlands, Belgium, Austria, Turkey, and 16 more countries
 
-To add missing teams, see **[DATABASE.md](DATABASE.md)**.
+To add missing teams
+1. Open `football_stadiums.csv` in a text editor or spreadsheet application
+2. Add new row with all required fields
+3. Ensure accurate GPS coordinates (4+ decimal places)
+4. Save file
+5. Restart MagicMirror to reload database
+
 
 ## 📁 Saving Routes
 
@@ -257,4 +263,5 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 
 
 **For complete guides, see documentation links at top of README.**
+
 
