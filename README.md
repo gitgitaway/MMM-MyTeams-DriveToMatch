@@ -86,7 +86,7 @@ If you use other MMM-MyTeams modules, they should all use the same `shared-reque
 - MMM-MyTeams-Honours
 - MMM-Celtic-OnThisDay
 
-**To integrate:** Copy `shared-request-manager.js` from this module to each of the other modules' directories. This ensures all modules coordinate their API requests through the same global queue. See user guid for more details
+**To integrate: If the other modules are missing the   `shared-request-manager.js` ** Copy it from this module to each of the other modules' directories. This ensures all modules coordinate their API requests through the same global queue. See user guid for more details
 
 ### Configuration
 
@@ -666,6 +666,7 @@ This is the 6th module in my Celtic themed man cave magicmirror.
 
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
 
 
 
