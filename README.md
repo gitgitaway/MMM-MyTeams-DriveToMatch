@@ -237,9 +237,10 @@ See **[CHANGELOG.md](CHANGELOG.md)** for complete version history.
 
 ## 📝 Notes
 
-This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
+This is the 6th module in a Celtic-themed MagicMirror setup. All are configurable for other teamd.
 - ![Screenshot 5](./screenshots/CelticMM-Screenshot.png)
 
+  Other modules:
 - [MMM-MyTeams-Clock](https://github.com/gitgitaway/MMM-MyTeams-Clock)
 - [MMM-MyTeams-LeagueTable](https://github.com/gitgitaway/MMM-MyTeams-LeagueTable)
 - [MMM-MyTeams-Fixtures](https://github.com/gitgitaway/MMM-MyTeams-Fixtures)
@@ -256,5 +257,6 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 5. **Console Logs**: Use browser dev tools (F12) to see detailed errors
 
 ---
+
 
 **For complete guides, see documentation links at top of README.**
