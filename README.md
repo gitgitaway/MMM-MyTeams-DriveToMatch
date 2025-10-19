@@ -26,7 +26,6 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 | **[CONFIGURATION.md](CONFIGURATION.md)** | All configuration options with examples |
 | **[ROUTES.md](ROUTES.md)** | Saving routes with turn-by-turn directions |
 | **[WAYPOINTS.md](WAYPOINTS.md)** | Bridge detection, ferries, and waypoints |
-| **[DATABASE.md](DATABASE.md)** | Managing stadium database and adding teams |
 | **[REQUEST-MANAGER.md](REQUEST-MANAGER.md)** | Shared request manager for multi-module setup |
 | **[TROUBLESHOOTING.md](usefull_Info/TROUBLESHOOTING.md)** | Common issues and solutions |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and changes |
@@ -258,3 +257,4 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 
 
 **For complete guides, see documentation links at top of README.**
+
