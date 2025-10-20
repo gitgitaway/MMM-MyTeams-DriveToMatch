@@ -106,7 +106,7 @@ Add this to your `config/config.js` with only required settings:
 | **apiUrl** | String | thesportsdb | TheSportsDB API endpoint |
 | **season** | String | "auto" | Season format (auto-detects current season) |
 | **fallbackSeason** | String | "2025-2026" | Fallback season if auto-detection fails |
-| **leagueIds** | Array | Scottish leagues | League IDs to fetch fixtures from |
+| **leagueIds** | Array | Scottish leagues | sportsdb.com League IDs to fetch fixtures from for your teams leagues|
 | **uefaLeagueIds** | Array | UEFA competitions | UEFA competition IDs |
 | **useSearchEventsFallback** | Boolean | true | Use search events API as fallback |
 | **strictLeagueFiltering** | Boolean | true | Strictly filter fixtures by league IDs |
@@ -214,4 +214,5 @@ config: {
 }
 
 ```
+
 
