@@ -2,7 +2,7 @@
 
 **Author:** gitgitaway
 
-Automatic fixture detection with real-time traffic routes to match venues using TomTom API , [TheSportsDB](https://www.thesportsdb.com/) & [FootballWebPages](https://www.footballwebpages.co.uk/). Supports all football teams and leagues (domestic and European competitions).
+Automatic fixture detection with real-time traffic routes to match venues using [TomTom API](https://developer.tomtom.com/user/me/apps) , [TheSportsDB](https://www.thesportsdb.com/) & [FootballWebPages](https://www.footballwebpages.co.uk/). Supports all football teams and leagues (domestic and European competitions).
 
 ## ✨ Features
 
@@ -121,7 +121,7 @@ config: {
 
 ## 🏟️ Supported Teams
 
-Database includes **161 teams** across **26 countries**:
+Database includes **500+ teams** across **26 countries**:
 
 - **Scotland**: 44 teams (all professional leagues)
 - **England**: 51 teams (Premier League + Championship)
@@ -259,3 +259,4 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 
 
 **For complete guides, see documentation links at top of README.**
+
