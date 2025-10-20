@@ -23,13 +23,13 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 
 | Document | Purpose |
 |----------|---------|
-| **[CONFIGURATION.md](https://github.com/gitgitaway/MMM-MyTeams-DriveToMatch/blob/main/usefull_Info/CONFIGURATION.md)** | All configuration options with examples |
-| **[ROUTES.md](ROUTES.md)** | Saving routes with turn-by-turn directions |
-| **[WAYPOINTS.md](WAYPOINTS.md)** | Bridge detection, ferries, and waypoints |
-| **[DATABASE.md](DATABASE.md)** | Managing stadium database and adding teams |
-| **[REQUEST-MANAGER.md](REQUEST-MANAGER.md)** | Shared request manager for multi-module setup |
+| **[CONFIGURATION.md](usefull_Info/CONFIGURATION.md)** | All configuration options with examples |
+| **[ROUTES.md](usefull_Info/ROUTES.md)** | Saving routes with turn-by-turn directions |
+| **[WAYPOINTS.md](usefull_Info/WAYPOINTS.md)** | Bridge detection, ferries, and waypoints |
+| **[DATABASE.md](usefull_Info/DATABASE.md)** | Managing stadium database and adding teams |
+| **[REQUEST-MANAGER.md](usefull_Info/REQUEST-MANAGER.md)** | Shared request manager for multi-module setup |
 | **[TROUBLESHOOTING.md](usefull_Info/TROUBLESHOOTING.md)** | Common issues and solutions |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history and changes |
+| **[CHANGELOG.md](usefull_Info/CHANGELOG.md)** | Version history and changes |
 
 ## 🎬 Screenshots
 
@@ -259,5 +259,6 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 
 
 **For complete guides, see documentation links at top of README.**
+
 
 
