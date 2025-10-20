@@ -96,7 +96,7 @@ Add this to your `config/config.js` with only required settings:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| **teamName** | String | - | Your team name (e.g., "Celtic", "Rangers") |
+| **teamName** | String | - | Your team name (e.g., "Celtic", "Liverpool"),"Eintracht Frankfurt" |
 | **teamId** | String | auto | TheSportsDB team ID (auto-resolves if not provided) |
 
 ### API Settings
@@ -212,4 +212,5 @@ config: {
     borderColorOverride: "#FFD700",  // Gold borders
     opacityOverride: 0.95
 }
+
 ```
