@@ -120,13 +120,13 @@ config: {
 
 ## 🏟️ Supported Teams
 
-Database includes **161 teams** across **26 countries**:
+Database includes **500+ teams** across **26 countries**:
 
 - **Scotland**: 44 teams (all professional leagues)
 - **England**: 51 teams (Premier League + Championship)
 - **Major European Leagues**: Spain, Italy, Germany, France, Portugal, Netherlands, Belgium, Austria, Turkey, and 16 more countries
 
-To add missing teams, see **[DATABASE.md](DATABASE.md)**.
+To add missing teams, open the 'football-teams-database.csv' file and add your teams details to the bottpm line. Make sure all columns are populated.
 
 ## 📁 Saving Routes
 
@@ -259,5 +259,6 @@ This is the 6th module in a Celtic-themed MagicMirror setup. All are configurabl
 
 
 **For complete guides, see documentation links at top of README.**
+
 
 
