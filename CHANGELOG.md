@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🏟️ Stadium Database Expansion
 
-- **Stadium Database**: Expanded from ~100 to **161 professional teams** across **26 countries**
+- **Stadium Database**: Expanded from ~100 to **500+ professional teams** across **26 countries**
   - **British Isles**: 97 teams (44 Scotland, 51 England, 2 Wales)
   - **Major European Leagues**: 64 teams (Spain, Italy, Germany, France, Portugal, Netherlands, Belgium, Turkey, Austria, and others)
 - **Data Quality**: All stadiums verified with GPS coordinates (4+ decimal precision), capacity data, postcodes, and team name aliases
@@ -144,17 +144,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Feature | Version | Status |
 |---------|---------|--------|
-| Real-time Fixture Fetching | 1.0.0 | ✅ Active |
-| Route Calculation & Display | 1.0.0 | ✅ Active |
-| Fuel Cost Estimation | 1.0.0 | ✅ Active |
-| Multi-Language Support | 1.0.0 | ✅ Active |
-| Waypoint Detection (Highways) | 1.1.0 | ✅ Active |
-| Bridge Detection (110+ bridges) | 1.1.0 - 1.4.2 | ✅ Active |
-| Ferry Detection (10 routes) | 1.2.0 | ✅ Active |
-| Eurotunnel Detection | 1.2.0 | ✅ Active |
-| Turn-by-Turn Directions | 1.4.0 | ✅ Active |
-| Route Saving | 1.4.0 | ✅ Active |
-| Stadium Database (161 teams) | 1.3.0 - 1.4.3 | ✅ Active |
+| Real-time Fixture Fetching | 1.0.0 | ✅ Archived |
+| Route Calculation & Display | 1.0.0 | ✅ Archived |
+| Fuel Cost Estimation | 1.0.0 | ✅ Archived  |
+| Multi-Language Support | 1.0.0 | ✅ Archived  |
+| Waypoint Detection (Highways) | 1.1.0 | ✅ Archived  |
+| Bridge Detection (110+ bridges) | 1.1.0 - 1.4.2 | ✅ Archived  |
+| Ferry Detection (10 routes) | 1.2.0 | ✅ Archived  |
+| Eurotunnel Detection | 1.2.0 | ✅ Archived |
+| Bug Fix & Typo Fix | 1.3.0 | ✅ Archived  |
+| Turn-by-Turn Directions | 1.4.0 | ✅  Archived   |
+| Route Saving | 1.4.0 | ✅ Archived  |
+| Stadium Database (500+ teams) | 1.3.0 - 1.4.3 | ✅ Active |
 
 | Adaptive Cache TTL | Unreleased | 🔄 In Progress |
+
 
