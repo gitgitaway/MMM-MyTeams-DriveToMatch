@@ -9,7 +9,7 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 - 🎯 **Automatic Fixture Detection** - Shows your next match
 - 🚗 **Real-time Traffic Routes** - Fastest and shortest routes with live traffic data
 - 🌍 **9 Languages** - English, Spanish, French, German, Italian, Dutch, Portuguese, Scottish Gaelic, Irish Gaelic
-- 🏟️ **161 Stadium Database** - Teams across 26 countries
+- 🏟️ **500+ Stadium Database** - Teams across 26 countries
 - 🌉 **110+ Bridge Detection** - GPS-based waypoint detection across UK and Europe
 - 🚢 **Ferry Detection** - Automatic ferry route detection for European fixtures
 - 🛣️ **Major Waypoints** - Motorways, A-roads, bridges, and landmarks
@@ -260,3 +260,4 @@ This is the 6th module in a Celtic-themed MagicMirror setup. All are configurabl
 
 
 **For complete guides, see documentation links at top of README.**
+
