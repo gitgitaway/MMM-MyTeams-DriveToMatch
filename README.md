@@ -23,7 +23,7 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 
 | Document | Purpose |
 |----------|---------|
-| **[CONFIGURATION.md](CONFIGURATION.md)** | All configuration options with examples |
+| **[CONFIGURATION.md](https://github.com/gitgitaway/MMM-MyTeams-DriveToMatch/blob/main/usefull_Info/CONFIGURATION.md)** | All configuration options with examples |
 | **[ROUTES.md](ROUTES.md)** | Saving routes with turn-by-turn directions |
 | **[WAYPOINTS.md](WAYPOINTS.md)** | Bridge detection, ferries, and waypoints |
 | **[DATABASE.md](DATABASE.md)** | Managing stadium database and adding teams |
@@ -259,4 +259,5 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 
 
 **For complete guides, see documentation links at top of README.**
+
 
