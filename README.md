@@ -2,7 +2,7 @@
 
 **Author:** gitgitaway
 
-Automatic fixture detection with real-time traffic routes to match venues using TomTom API and TheSportsDB/FootballWebPages. Supports all football teams and leagues (domestic and European competitions).
+Automatic fixture detection with real-time traffic routes to match venues using TomTom API , [TheSportsDB](https://www.thesportsdb.com/) & [FootballWebPages](https://www.footballwebpages.co.uk/). Supports all football teams and leagues (domestic and European competitions).
 
 ## ✨ Features
 
@@ -26,6 +26,7 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 | **[CONFIGURATION.md](CONFIGURATION.md)** | All configuration options with examples |
 | **[ROUTES.md](ROUTES.md)** | Saving routes with turn-by-turn directions |
 | **[WAYPOINTS.md](WAYPOINTS.md)** | Bridge detection, ferries, and waypoints |
+| **[DATABASE.md](DATABASE.md)** | Managing stadium database and adding teams |
 | **[REQUEST-MANAGER.md](REQUEST-MANAGER.md)** | Shared request manager for multi-module setup |
 | **[TROUBLESHOOTING.md](usefull_Info/TROUBLESHOOTING.md)** | Common issues and solutions |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history and changes |
@@ -120,13 +121,13 @@ config: {
 
 ## 🏟️ Supported Teams
 
-Database includes **500+ teams** across **26 countries**:
+Database includes **161 teams** across **26 countries**:
 
 - **Scotland**: 44 teams (all professional leagues)
 - **England**: 51 teams (Premier League + Championship)
 - **Major European Leagues**: Spain, Italy, Germany, France, Portugal, Netherlands, Belgium, Austria, Turkey, and 16 more countries
 
-To add missing teams, open the 'football-teams-database.csv' file and add your teams details to the bottpm line. Make sure all columns are populated.
+To add missing teams, see **[DATABASE.md](DATABASE.md)**.
 
 ## 📁 Saving Routes
 
@@ -236,10 +237,9 @@ See **[CHANGELOG.md](CHANGELOG.md)** for complete version history.
 
 ## 📝 Notes
 
-This is the 6th module in a Celtic-themed MagicMirror setup. All are configurable for other teamd.
+This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 - ![Screenshot 5](./screenshots/CelticMM-Screenshot.png)
 
-  Other modules:
 - [MMM-MyTeams-Clock](https://github.com/gitgitaway/MMM-MyTeams-Clock)
 - [MMM-MyTeams-LeagueTable](https://github.com/gitgitaway/MMM-MyTeams-LeagueTable)
 - [MMM-MyTeams-Fixtures](https://github.com/gitgitaway/MMM-MyTeams-Fixtures)
@@ -257,8 +257,4 @@ This is the 6th module in a Celtic-themed MagicMirror setup. All are configurabl
 
 ---
 
-
 **For complete guides, see documentation links at top of README.**
-
-
-
