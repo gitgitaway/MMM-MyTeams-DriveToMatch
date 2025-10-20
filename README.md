@@ -127,7 +127,7 @@ Database includes **161 teams** across **26 countries**:
 - **England**: 51 teams (Premier League + Championship)
 - **Major European Leagues**: Spain, Italy, Germany, France, Portugal, Netherlands, Belgium, Austria, Turkey, and 16 more countries
 
-To add missing teams, see **[DATABASE.md](DATABASE.md)**.
+To add missing teams, opem the 'football-teams-database.csv' file and add yoir teams details to the bottom line completing all coloumns for your team. see **[DATABASE.md](DATABASE.md) for maintenance scripts**.
 
 ## 📁 Saving Routes
 
@@ -256,5 +256,6 @@ This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
 5. **Console Logs**: Use browser dev tools (F12) to see detailed errors
 
 ---
+
 
 **For complete guides, see documentation links at top of README.**
