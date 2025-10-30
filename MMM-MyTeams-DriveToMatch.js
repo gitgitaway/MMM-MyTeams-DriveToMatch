@@ -59,6 +59,14 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         debug: false,
         dateOverride: null, // Format: "YYYY-MM-DD" to test specific fixture dates (e.g., "2025-10-05")
         
+        // Multi-API fixture settings
+        useMultiAPIProvider: false, // Enable multi-API fixture fetching (ESPN, BBC Sport, TheSportsDB)
+        apiPriority: ["thesportsdb", "espn", "bbcsport"], // API priority order for fallback
+        mergeFixtures: false, // Merge fixtures from all sources (true) or use first successful (false)
+        
+        // Stadium database update settings
+        enableStadiumUpdateNotification: true, // Show notification button to trigger stadium updates
+        
         // Theme overrides
         darkMode: null,              // null=auto, true=force dark, false=force light
         fontColorOverride: null,     // e.g., "#FFFFFF" to force white text
@@ -87,11 +95,21 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         // Generate unique instance ID to filter notifications
         this.instanceId = this.identifier + "_" + Date.now();
         
-        // Validate required config
+        // SECURITY PATCH: Validate and securely send API key
         if (!this.config.apiTomTomKey || this.config.apiTomTomKey === "YOUR_TOMTOM_API_KEY") {
-            this.error = this.translate("API_KEY_REQUIRED");
-            this.updateDom();
-            return;
+            Log.warn(this.name + ": ⚠️  API key not configured in module config");
+            Log.warn(this.name + ": ℹ️  TomTom API key should be set via TOMTOM_API_KEY environment variable for security");
+            Log.warn(this.name + ": ℹ️  Or configure 'apiTomTomKey' in module config (less secure)");
+            // Don't error out immediately - may be using environment variable
+        } else {
+            // SECURITY PATCH: Send API key once at startup via SET_API_KEY notification
+            // This prevents API key from being sent with every GET_ROUTES request
+            this.sendSocketNotification("SET_API_KEY", {
+                apiKey: this.config.apiTomTomKey
+            });
+            if (this.config.debug) {
+                Log.info(this.name + ": API key sent to node helper via SET_API_KEY notification");
+            }
         }
         
         if (!this.config.homeLatitude || !this.config.homeLongitude) {
@@ -156,25 +174,39 @@ Module.register("MMM-MyTeams-DriveToMatch", {
             Log.info(this.name + ": Fetching next fixture for " + this.config.teamName);
         }
         
-        // Send complete config to node_helper with instance ID for filtering
-        this.sendSocketNotification("GET_NEXT_FIXTURE", {
-            instanceId: this.instanceId, // Add instance ID for response filtering
-            teamName: this.config.teamName,
-            teamId: this.config.teamId,
-            dateOverride: this.config.dateOverride,
-            debug: this.config.debug,
-            // Include all API-related config parameters
-            apiUrl: this.config.apiUrl,
-            season: this.config.season,
-            fallbackSeason: this.config.fallbackSeason,
-            leagueIds: this.config.leagueIds,
-            uefaLeagueIds: this.config.uefaLeagueIds,
-            useSearchEventsFallback: this.config.useSearchEventsFallback,
-            strictLeagueFiltering: this.config.strictLeagueFiltering,
-            requestTimeout: this.config.requestTimeout,
-            // Shared cache option
-            useSharedFixturesCache: this.config.useSharedFixturesCache
-        });
+        // Use multi-API provider if enabled
+        if (this.config.useMultiAPIProvider) {
+            this.sendSocketNotification("FETCH_FIXTURES_MULTI_API", {
+                instanceId: this.instanceId,
+                teamName: this.config.teamName,
+                teamId: this.config.teamId,
+                dateOverride: this.config.dateOverride,
+                debug: this.config.debug,
+                apiPriority: this.config.apiPriority,
+                mergeFixtures: this.config.mergeFixtures,
+                requestTimeout: this.config.requestTimeout
+            });
+        } else {
+            // Use standard TheSportsDB API
+            this.sendSocketNotification("GET_NEXT_FIXTURE", {
+                instanceId: this.instanceId, // Add instance ID for response filtering
+                teamName: this.config.teamName,
+                teamId: this.config.teamId,
+                dateOverride: this.config.dateOverride,
+                debug: this.config.debug,
+                // Include all API-related config parameters
+                apiUrl: this.config.apiUrl,
+                season: this.config.season,
+                fallbackSeason: this.config.fallbackSeason,
+                leagueIds: this.config.leagueIds,
+                uefaLeagueIds: this.config.uefaLeagueIds,
+                useSearchEventsFallback: this.config.useSearchEventsFallback,
+                strictLeagueFiltering: this.config.strictLeagueFiltering,
+                requestTimeout: this.config.requestTimeout,
+                // Shared cache option
+                useSharedFixturesCache: this.config.useSharedFixturesCache
+            });
+        }
     },
 
     // Fetch routes to venue
@@ -199,10 +231,10 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                                    this.nextFixture.venue.longitude !== null;
 
         if (this.config.debug) {
-            Log.info(this.name + ": Fetching routes to " + this.nextFixture.venue.name);
+            Log.info(this.name + ": Fetching routes to " + this.nextFixture.venue.stadiumName);
             Log.info(this.name + ": Route calculation details:", {
                 from: "Home (" + this.config.homeLatitude + ", " + this.config.homeLongitude + ")",
-                to: this.nextFixture.venue.name + " (" + this.nextFixture.venue.latitude + ", " + this.nextFixture.venue.longitude + ")",
+                to: this.nextFixture.venue.stadiumName + " (" + this.nextFixture.venue.latitude + ", " + this.nextFixture.venue.longitude + ")",
                 fixture: this.nextFixture.homeTeam + " vs " + this.nextFixture.awayTeam,
                 isHome: this.nextFixture.isHome,
                 isAway: isAwayMatch,
@@ -216,18 +248,19 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         // Skip route calculation if venue coordinates are not available (e.g., European away games)
         if (!hasVenueCoordinates) {
             if (this.config.debug) {
-                Log.warn(this.name + ": Venue coordinates not available for " + this.nextFixture.venue.name + " - skipping route calculation");
+                Log.warn(this.name + ": Venue coordinates not available for " + this.nextFixture.venue.stadiumName + " - skipping route calculation");
             }
             // Show fixture without routes
             this.routes = null;
-            this.routeError = "Venue coordinates not available for " + this.nextFixture.venue.name;
+            this.routeError = "Venue coordinates not available for " + this.nextFixture.venue.stadiumName;
             this.updateDom(this.config.animationSpeed);
             return;
         }
 
         const routeData = {
             instanceId: this.instanceId, // Add instance ID for response filtering
-            apiKey: this.config.apiTomTomKey,
+            // SECURITY PATCH: API key is no longer included in GET_ROUTES
+            // It is configured separately via SET_API_KEY notification
             startLat: this.config.homeLatitude,
             startLng: this.config.homeLongitude,
             endLat: this.nextFixture.venue.latitude,
@@ -280,6 +313,18 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                 break;
             case "ROUTE_SAVE_ERROR":
                 this.handleRouteSaveError(payload);
+                break;
+            case "STADIUM_UPDATE_PROGRESS":
+                this.handleStadiumUpdateProgress(payload);
+                break;
+            case "STADIUM_UPDATE_COMPLETE":
+                this.handleStadiumUpdateComplete(payload);
+                break;
+            case "STADIUM_UPDATE_ERROR":
+                this.handleStadiumUpdateError(payload);
+                break;
+            case "STADIUM_CACHE_REFRESHED":
+                this.handleStadiumCacheRefreshed(payload);
                 break;
         }
     },
@@ -470,7 +515,7 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                     <div class="date">${this.formatDate(date)}</div>
                     <div class="venue">
                         <i class="fa fa-map-marker-alt"></i>
-                        ${venue ? venue.name : this.translate("VENUE_TBC")}${venue && venue.postCode ? ' - ' + venue.postCode : ''}
+                        ${venue ? venue.stadiumName : this.translate("VENUE_TBC")}${venue && venue.postCode ? ' - ' + venue.postCode : ''}
                     </div>
                     ${this.nextFixture.competition ? `<div class="competition">${this.nextFixture.competition}</div>` : ''}
                 </div>
@@ -679,7 +724,7 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         // Determine opponent name (the team we're NOT supporting)
         const isHome = this.nextFixture.isHome;
         const opponent = this.nextFixture.opponent;
-        const venueName = this.nextFixture.venue ? this.nextFixture.venue.name : 'Unknown';
+        const venueName = this.nextFixture.venue ? this.nextFixture.venue.stadiumName : 'Unknown';
 
         // Prepare route data for saving
         const routeData = {
@@ -805,6 +850,116 @@ Module.register("MMM-MyTeams-DriveToMatch", {
             } catch (err) {
                 console.error("[MMM-MyTeams-DriveToMatch] Failed to apply theme overrides:", err);
             }
+        }
+    },
+
+    /**
+     * Handle stadium update progress notifications
+     */
+    handleStadiumUpdateProgress: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Stadium update progress: " + payload.message);
+        }
+        
+        // Send notification to MagicMirror notification system
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Stadium Database Update",
+            message: payload.message + (payload.progress ? ` (${payload.progress}%)` : "")
+        });
+    },
+
+    /**
+     * Handle stadium update completion
+     */
+    handleStadiumUpdateComplete: function(payload) {
+        Log.info(this.name + ": Stadium update complete: " + payload.stadiumCount + " stadiums");
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Stadium Database Updated",
+            message: `Successfully updated ${payload.stadiumCount} stadiums. Reloading fixtures...`,
+            timer: 5000 
+        });
+
+        // Reload fixtures with new stadium data
+        setTimeout(() => {
+            this.fetchFixture();
+        }, 2000);
+    },
+
+    /**
+     * Handle stadium update errors
+     */
+    handleStadiumUpdateError: function(payload) {
+        Log.error(this.name + ": Stadium update error: " + payload.message);
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Stadium Update Failed",
+            message: payload.message,
+            timer: 8000
+        });
+    },
+
+    /**
+     * Handle stadium cache refresh completion
+     */
+    handleStadiumCacheRefreshed: function(payload) {
+        if (payload.success) {
+            Log.info(this.name + ": Stadium cache refreshed: " + payload.stadiumCount + " stadiums");
+            
+            this.sendNotification("SHOW_ALERT", {
+                type: "notification",
+                title: "Stadium Cache Refreshed",
+                message: `Successfully refreshed ${payload.stadiumCount} stadium entries. Reloading fixtures...`,
+                timer: 5000
+            });
+
+            // Reload fixtures with refreshed stadium data
+            setTimeout(() => {
+                this.fetchFixture();
+            }, 2000);
+        } else {
+            Log.error(this.name + ": Stadium cache refresh failed: " + payload.error);
+            
+            this.sendNotification("SHOW_ALERT", {
+                type: "notification",
+                title: "Cache Refresh Failed",
+                message: payload.error || "Unknown error",
+                timer: 8000
+            });
+        }
+    },
+
+    /**
+     * Trigger stadium database update
+     * Called via notification or manual trigger
+     */
+    triggerStadiumUpdate: function() {
+        if (this.config.debug) {
+            Log.info(this.name + ": Triggering stadium database update...");
+        }
+
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Stadium Database Update",
+            message: "Starting stadium database update from web sources...",
+            timer: 3000
+        });
+
+        this.sendSocketNotification("UPDATE_STADIUM_DATABASE", {
+            instanceId: this.instanceId,
+            debug: this.config.debug
+        });
+    },
+
+    /**
+     * Override getNotificationReceived to handle external notifications
+     */
+    notificationReceived: function(notification, payload, sender) {
+        if (notification === "UPDATE_STADIUM_DATABASE") {
+            this.triggerStadiumUpdate();
         }
     }
 });

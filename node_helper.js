@@ -14,10 +14,6 @@ const NodeHelper = require("node_helper");
 const cheerio = require("cheerio");
 const fs = require("fs");
 const path = require("path");
-const SharedRequestManager = require("./shared-request-manager.js");
-
-// Initialize shared request manager
-const requestManager = SharedRequestManager.getInstance();
 
 // Prefer native fetch (Node 18+), fallback to node-fetch v2
 let _fetchImpl = null;
@@ -50,6 +46,7 @@ const fetchInitialized = initializeFetch();
 const CACHE_FILE = path.join(__dirname, "fixtures-cache.json");
 const SHARED_CACHE_FILE = path.join(__dirname, "..", "MMM-MyTeams-Fixtures", "fixtures-cache.json");
 const SHARED_CACHE_LOCAL = path.join(__dirname, "sharedFixtures-cache.json"); // Local copy of shared cache
+const STADIUM_CACHE_FILE = path.join(__dirname, "stadium-cache.json"); // Cache for parsed stadium data
 
 let cache = {
   ts: 0,
@@ -91,22 +88,23 @@ function copySharedCache() {
 // Load any existing cache from disk at startup
 function loadCacheFromDisk(useSharedCache = false) {
   try {
-    // Determine which cache file to use
-    if (useSharedCache) {
-      console.log("[MMM-MyTeams-DriveToMatch] useSharedFixturesCache enabled - attempting to copy from MMM-MyTeams-Fixtures");
-      copySharedCache();
-      activeCacheFile = SHARED_CACHE_LOCAL; // Use sharedFixtures-cache.json as primary
-      console.log("[MMM-MyTeams-DriveToMatch] Using sharedFixtures-cache.json as primary cache");
-    } else {
-      activeCacheFile = CACHE_FILE; // Use fixtures-cache.json as backup
-      console.log("[MMM-MyTeams-DriveToMatch] Using fixtures-cache.json as primary cache");
-    }
+    // DUAL-CACHE STRATEGY:
+    // 1. Try local cache first (fixtures-cache.json) - contains next fixture + routes
+    // 2. Fall back to shared cache (sharedFixtures-cache.json) - contains all fixtures
     
-    // Load from the active cache file
-    if (fs.existsSync(activeCacheFile)) {
-      const raw = fs.readFileSync(activeCacheFile, "utf8");
+    let localCacheLoaded = false;
+    
+    // Try loading local cache first (always check this for next fixture + routes)
+    if (fs.existsSync(CACHE_FILE)) {
+      const raw = fs.readFileSync(CACHE_FILE, "utf8");
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.data) {
+      
+      // Check if cache is still valid
+      const now = Date.now();
+      const age = now - (parsed.ts || 0);
+      const ttl = parsed.ttl || 300000;
+      
+      if (parsed && parsed.data && age < ttl) {
         cache = {
           ts: Number(parsed.ts) || 0,
           ttl: Number(parsed.ttl) || 0,
@@ -114,13 +112,46 @@ function loadCacheFromDisk(useSharedCache = false) {
           key: parsed.key || null,
           data: parsed.data
         };
-        console.log(`[MMM-MyTeams-DriveToMatch] ✓ Loaded ${Array.isArray(parsed.data) ? parsed.data.length : 1} fixture(s) from ${path.basename(activeCacheFile)}`);
+        console.log(`[MMM-MyTeams-DriveToMatch] ✓ Loaded next fixture from fixtures-cache.json (age: ${Math.round(age / 60000)}min, TTL: ${Math.round(ttl / 60000)}min)`);
+        localCacheLoaded = true;
+        activeCacheFile = CACHE_FILE;
+      } else {
+        console.log(`[MMM-MyTeams-DriveToMatch] Local cache expired (age: ${Math.round(age / 60000)}min > TTL: ${Math.round(ttl / 60000)}min)`);
       }
-    } else {
-      console.warn(`[MMM-MyTeams-DriveToMatch] Cache file not found: ${path.basename(activeCacheFile)}`);
+    }
+    
+    // If local cache not loaded and shared cache is enabled, try shared cache
+    if (!localCacheLoaded && useSharedCache) {
+      console.log("[MMM-MyTeams-DriveToMatch] useSharedFixturesCache enabled - attempting to copy from MMM-MyTeams-Fixtures");
+      if (copySharedCache()) {
+        activeCacheFile = SHARED_CACHE_LOCAL;
+        
+        // Load shared cache
+        if (fs.existsSync(SHARED_CACHE_LOCAL)) {
+          const raw = fs.readFileSync(SHARED_CACHE_LOCAL, "utf8");
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.data) {
+            cache = {
+              ts: Number(parsed.ts) || 0,
+              ttl: Number(parsed.ttl) || 0,
+              source: parsed.source || null,
+              key: parsed.key || null,
+              data: parsed.data
+            };
+            console.log(`[MMM-MyTeams-DriveToMatch] ✓ Loaded ${Array.isArray(parsed.data) ? parsed.data.length : 1} fixture(s) from sharedFixtures-cache.json`);
+          }
+        }
+      } else {
+        console.warn("[MMM-MyTeams-DriveToMatch] Failed to load shared cache, will fetch from API");
+        activeCacheFile = CACHE_FILE;
+      }
+    } else if (!localCacheLoaded) {
+      console.log("[MMM-MyTeams-DriveToMatch] No valid cache found, will fetch from API");
+      activeCacheFile = CACHE_FILE;
     }
   } catch (e) {
     console.warn("[MMM-MyTeams-DriveToMatch] Cache load failed:", e.message);
+    activeCacheFile = CACHE_FILE;
   }
 }
 
@@ -135,26 +166,149 @@ function saveCacheToDisk(ttl) {
         data: cache.data
       };
       
-      // Only save to fixtures-cache.json when NOT using shared cache
-      // This prevents overwriting the shared cache data
-      if (activeCacheFile === CACHE_FILE) {
-        fs.writeFileSync(CACHE_FILE, JSON.stringify(payload, null, 2), "utf8");
-        console.log(`[MMM-MyTeams-DriveToMatch] ✓ Wrote fixture to fixtures-cache.json`);
-      } else {
-        console.log(`[MMM-MyTeams-DriveToMatch] Using shared cache - skipping save to prevent overwrite`);
-      }
+      // DUAL-CACHE STRATEGY:
+      // Always save to fixtures-cache.json for local caching (next fixture + routes)
+      // This minimizes API calls on restart and caches expensive route calculations
+      fs.writeFileSync(CACHE_FILE, JSON.stringify(payload, null, 2), "utf8");
+      console.log(`[MMM-MyTeams-DriveToMatch] ✓ Saved next fixture to fixtures-cache.json (TTL: ${Math.round((ttl || 300000) / 60000)}min)`);
+      
+      // Note: sharedFixtures-cache.json remains separate and is only updated by copySharedCache()
     }
   } catch (e) {
     console.warn("[MMM-MyTeams-DriveToMatch] Cache save failed:", e.message);
   }
 }
 
-// Generic fetch with timeout and headers - NOW USES SHARED REQUEST MANAGER
-async function doFetch(url, options = {}, timeoutMs = 15000, priority = 1) {
+// Calculate adaptive cache TTL based on days until fixture
+// Closer to match date = shorter TTL to capture traffic updates
+// Further from match = longer TTL since fixture unlikely to change
+function calculateAdaptiveCacheTTL(fixtureDate) {
+  try {
+    if (!fixtureDate) {
+      // Default fallback
+      return 1 * 60 * 1000; // 1 minute
+    }
+    
+    // Parse fixture date (format: "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SS")
+    const fixtureDateOnly = fixtureDate.split('T')[0];
+    const fixtureTime = new Date(fixtureDateOnly + "T15:00:00Z"); // Assume 3 PM UTC
+    const now = new Date();
+    
+    // Calculate days until fixture
+    const msUntilFixture = fixtureTime.getTime() - now.getTime();
+    const daysUntilFixture = msUntilFixture / (1000 * 60 * 60 * 24);
+    
+    let ttl;
+    
+    if (daysUntilFixture < 0) {
+      // Match already happened
+      ttl = 6 * 60 * 60 * 1000; // 6 hours (won't update anyway)
+    } else if (daysUntilFixture < 1) {
+      // Match today - update every 10 minutes for latest traffic
+      ttl = 10 * 60 * 1000; // 10 minutes
+    } else if (daysUntilFixture < 3) {
+      // 1-3 days until match - update every 30 minutes
+      ttl = 30 * 60 * 1000; // 30 minutes
+    } else if (daysUntilFixture < 7) {
+      // 3-7 days until match - update every 2 hours
+      ttl = 2 * 60 * 60 * 1000; // 2 hours
+    } else if (daysUntilFixture < 15) {
+      // 1-2 weeks until match - update every 6 hours
+      ttl = 6 * 60 * 60 * 1000; // 6 hours
+    } else if (daysUntilFixture < 30) {
+      // 2-4 weeks until match - update every 12 hours
+      ttl = 12 * 60 * 60 * 1000; // 12 hours
+    } else {
+      // More than 30 days away - update once a day
+      ttl = 24 * 60 * 60 * 1000; // 24 hours
+    }
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[MMM-MyTeams-DriveToMatch] Adaptive Cache TTL: ${Math.round(ttl / 60000)}min for fixture ${Math.round(daysUntilFixture * 10) / 10} days away`);
+    }
+    
+    return ttl;
+  } catch (e) {
+    console.warn("[MMM-MyTeams-DriveToMatch] Error calculating adaptive TTL:", e.message);
+    return 1 * 60 * 1000; // Fallback to 1 minute
+  }
+}
+
+// Save stadium data cache to disk
+function saveStadiumCache(stadiumMap, csvPath) {
+  try {
+    const csvStats = fs.statSync(csvPath);
+    const stadiumArray = Array.from(stadiumMap.entries()).map(([key, value]) => ({
+      key: key,
+      data: value
+    }));
+    
+    const payload = {
+      ts: Date.now(),
+      csvModified: csvStats.mtimeMs,
+      csvPath: csvPath,
+      count: stadiumArray.length,
+      data: stadiumArray
+    };
+    
+    fs.writeFileSync(STADIUM_CACHE_FILE, JSON.stringify(payload, null, 2), "utf8");
+    console.log(`[MMM-MyTeams-DriveToMatch] ✓ Cached ${stadiumArray.length} stadium entries to ${path.basename(STADIUM_CACHE_FILE)}`);
+    return true;
+  } catch (e) {
+    console.warn("[MMM-MyTeams-DriveToMatch] Stadium cache save failed:", e.message);
+    return false;
+  }
+}
+
+// Load stadium data cache from disk
+function loadStadiumCache(csvPath) {
+  try {
+    if (!fs.existsSync(STADIUM_CACHE_FILE)) {
+      console.log("[MMM-MyTeams-DriveToMatch] No stadium cache file found");
+      return null;
+    }
+    
+    if (!fs.existsSync(csvPath)) {
+      console.log("[MMM-MyTeams-DriveToMatch] CSV file not found, cache invalid");
+      return null;
+    }
+    
+    const cacheRaw = fs.readFileSync(STADIUM_CACHE_FILE, "utf8");
+    const cacheData = JSON.parse(cacheRaw);
+    
+    // Check if CSV has been modified since cache was created
+    const csvStats = fs.statSync(csvPath);
+    if (csvStats.mtimeMs !== cacheData.csvModified) {
+      console.log("[MMM-MyTeams-DriveToMatch] CSV file modified since cache created, invalidating cache");
+      return null;
+    }
+    
+    // Reconstruct Map from cached array
+    const stadiumMap = new Map();
+    if (Array.isArray(cacheData.data)) {
+      cacheData.data.forEach(item => {
+        stadiumMap.set(item.key, item.data);
+      });
+    }
+    
+    console.log(`[MMM-MyTeams-DriveToMatch] ✓ Loaded ${stadiumMap.size} stadium entries from cache (created ${new Date(cacheData.ts).toLocaleString()})`);
+    return stadiumMap;
+  } catch (e) {
+    console.warn("[MMM-MyTeams-DriveToMatch] Stadium cache load failed:", e.message);
+    return null;
+  }
+}
+
+// Generic fetch with timeout and headers
+async function doFetch(url, options = {}, timeoutMs = 15000) {
   if (!_fetchImpl) throw new Error(`Fetch not available (${_fetchType})`);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const fetchOptions = {
     ...options,
+    signal: controller.signal,
     headers: {
       "User-Agent": "MMM-MyTeams-DriveToMatch (+MagicMirror)",
       "Accept": "application/json, text/html;q=0.9",
@@ -164,30 +318,31 @@ async function doFetch(url, options = {}, timeoutMs = 15000, priority = 1) {
   };
 
   try {
-    // Use shared request manager to coordinate with other modules
-    const result = await requestManager.queueRequest({
-      url: url,
-      options: fetchOptions,
-      timeout: timeoutMs,
-      priority: priority,
-      moduleId: 'MMM-MyTeams-DriveToMatch',
-      deduplicate: true
-    });
-
-    if (!result.success) {
-      throw new Error(`HTTP ${result.status}: Request failed`);
-    }
-
-    // Return a response-like object for compatibility
-    return {
-      ok: true,
-      status: result.status,
-      json: async () => typeof result.data === 'string' ? JSON.parse(result.data) : result.data,
-      text: async () => typeof result.data === 'string' ? result.data : JSON.stringify(result.data)
-    };
+    const response = await _fetchImpl(url, fetchOptions);
+    clearTimeout(timeoutId);
+    return response;
   } catch (err) {
+    clearTimeout(timeoutId);
     if (err.name === "AbortError") throw new Error(`Request timeout after ${timeoutMs}ms`);
     throw err;
+  }
+}
+
+// Sanitize URLs for logging (remove sensitive parameters)
+function sanitizeUrlForLogging(url) {
+  try {
+    const urlObj = new URL(url);
+    // Remove sensitive query parameters
+    const sensitiveParams = ['key', 'apikey', 'api_key', 'token', 'auth', 'secret'];
+    sensitiveParams.forEach(param => {
+      if (urlObj.searchParams.has(param)) {
+        urlObj.searchParams.set(param, '***API_KEY_HIDDEN***');
+      }
+    });
+    return urlObj.toString();
+  } catch (e) {
+    // If URL parsing fails, return a generic message
+    return '[URL - contains API key - not logged for security]';
   }
 }
 
@@ -821,28 +976,33 @@ module.exports = NodeHelper.create({
     // Module variables
     fixtureCache: new Map(),
     venueCache: new Map(),
-    scottishGrounds: new Map(),
+    scottishStadiums: new Map(),
     requestQueue: [], // Queue for API requests to prevent conflicts
     isProcessingQueue: false, // Flag to track queue processing
     lastRequestTime: 0, // Track last request time for throttling
     MIN_REQUEST_INTERVAL: 2000, // Minimum 2 seconds between requests to avoid conflicts
+    
+    // SECURITY PATCH: Store API key securely (never pass through socket notifications)
+    tomtomApiKey: null, // Set via SET_API_KEY notification or environment variable
 
     // Start the helper
     start: function() {
         console.log("Starting node helper for: MMM-MyTeams-DriveToMatch");
-        this.loadScottishGrounds();
+        
+        // SECURITY PATCH: Check for environment variable first
+        if (process.env.TOMTOM_API_KEY) {
+            this.tomtomApiKey = process.env.TOMTOM_API_KEY;
+            console.log("[MMM-MyTeams-DriveToMatch] ✓ TomTom API key loaded from environment variable TOMTOM_API_KEY");
+        } else {
+            console.warn("[MMM-MyTeams-DriveToMatch] ⚠️  TomTom API key not set via environment variable TOMTOM_API_KEY");
+            console.warn("[MMM-MyTeams-DriveToMatch] ⚠️  Will attempt to use key from SET_API_KEY notification");
+        }
+        
+        this.loadscottishStadiums();
         loadCacheFromDisk();
         
-        // Start queue processor (legacy - now using SharedRequestManager)
+        // Start queue processor
         this.startQueueProcessor();
-        
-        // Configure shared request manager
-        requestManager.updateConfig({
-            minRequestInterval: 2000,      // 2 seconds between any requests
-            minDomainInterval: 1000,       // 1 second between requests to same domain
-            maxRetries: 3,
-            requestTimeout: 15000
-        });
     },
     
     // Queue processor to handle requests sequentially with throttling
@@ -885,14 +1045,26 @@ module.exports = NodeHelper.create({
     },
 
     // Load football stadiums database
-    loadScottishGrounds: function() {
+    loadscottishStadiums: function() {
         try {
-            // Try to load from CSV file first
-            const csvPath = path.join(__dirname, "football_stadiums.csv");
+            const csvPath = path.join(__dirname, "football_teams_database.csv");
+            
+            // Try to load from cache first
+            const cachedStadiums = loadStadiumCache(csvPath);
+            if (cachedStadiums && cachedStadiums.size > 0) {
+                this.scottishStadiums = cachedStadiums;
+                console.log(`MMM-MyTeams-DriveToMatch: Loaded ${cachedStadiums.size} teams from cache`);
+                return;
+            }
+            
+            // Cache miss or invalid - parse CSV
             if (fs.existsSync(csvPath)) {
                 const csvData = fs.readFileSync(csvPath, "utf8");
                 this.parseGroundsCSV(csvData);
-                console.log("MMM-MyTeams-DriveToMatch: Loaded football stadiums from CSV");
+                console.log("MMM-MyTeams-DriveToMatch: Loaded football teams database from CSV");
+                
+                // Save to cache for next time
+                saveStadiumCache(this.scottishStadiums, csvPath);
             } else {
                 // Fallback to hardcoded data
                 this.loadHardcodedGrounds();
@@ -907,77 +1079,344 @@ module.exports = NodeHelper.create({
     // Parse CSV grounds data
     parseGroundsCSV: function(csvData) {
         const lines = csvData.split('\n');
+        let successCount = 0;
+        let errorCount = 0;
         
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue; // Skip empty lines
             
             const values = line.split(',');
-            if (values.length >= 4) {
-                const team = values[0].trim();
-                const ground = values[1].trim();
-                const lat = parseFloat(values[2]);
-                const lng = parseFloat(values[3]);
+            // CSV format: Country,Team,TeamID,Location,Stadium_Name,Stadium_Capacity,Post_Code,Latitude,Longitude,League,LeagueID,National_Cup_ID,League_Cup_Name,League_Cup_ID
+            // New format includes TeamID, LeagueID, and Cup competition IDs
+            if (values.length >= 9) { // Need at least 9 columns for lat/lng (indices 7-8)
+                const country = values[0].trim();
+                const team = values[1].trim();
+                const teamId = values.length > 2 ? values[2].trim() : ''; // TeamID at index 2
+                const location = values.length > 3 ? values[3].trim() : ''; // Location at index 3
+                const stadiumName = values.length > 4 ? values[4].trim() : ''; // Stadium_Name at index 4
+                const capacity = values.length > 5 ? values[5].trim() : ''; // Stadium_Capacity at index 5
+                const postCode = values.length > 6 ? values[6].trim() : ''; // Post_Code at index 6
+                const lat = parseFloat(values[7]); // Latitude at index 7
+                const lng = parseFloat(values[8]); // Longitude at index 8
+                const league = values.length > 9 ? values[9].trim() : ''; // League at index 9
+                const leagueId = values.length > 10 ? values[10].trim() : ''; // LeagueID at index 10
+                const nationalCupId = values.length > 11 ? values[11].trim() : ''; // National_Cup_ID at index 11
+                const leagueCupName = values.length > 12 ? values[12].trim() : ''; // League_Cup_Name at index 12
+                const leagueCupId = values.length > 13 ? values[13].trim() : ''; // League_Cup_ID at index 13
                 
-                // Additional columns (optional)
-                const country = values.length > 4 ? values[4].trim() : '';
-                const league = values.length > 5 ? values[5].trim() : '';
-                const location = values.length > 6 ? values[6].trim() : '';
-                const capacity = values.length > 7 ? values[7].trim() : '';
-                const postCode = values.length > 8 ? values[8].trim() : '';
-                
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    this.scottishGrounds.set(team.toLowerCase(), {
-                        name: ground,
+                // Validate coordinates are valid numbers
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    this.scottishStadiums.set(team.toLowerCase(), {
+                        stadiumName: stadiumName,
                         latitude: lat,
                         longitude: lng,
                         team: team,
+                        teamId: teamId,
                         country: country,
                         league: league,
+                        leagueId: leagueId,
                         location: location,
                         capacity: capacity,
-                        postCode: postCode
+                        postCode: postCode,
+                        nationalCupId: nationalCupId,
+                        leagueCupName: leagueCupName,
+                        leagueCupId: leagueCupId
                     });
+                    successCount++;
+                } else {
+                    console.warn(`MMM-MyTeams-DriveToMatch: Invalid coordinates for ${team}: lat=${values[7]}, lng=${values[8]}`);
+                    errorCount++;
                 }
+            } else {
+                console.warn(`MMM-MyTeams-DriveToMatch: Insufficient columns (${values.length}) at line ${i+1}: ${line.substring(0, 50)}...`);
+                errorCount++;
             }
         }
+        
+        console.log(`MMM-MyTeams-DriveToMatch: Parsed ${successCount} teams successfully, ${errorCount} errors`);
     },
 
     // Hardcoded Scottish grounds as fallback
     loadHardcodedGrounds: function() {
         const grounds = {
-            // SPFL Premiership
-            "celtic": { name: "Celtic Park", latitude: 55.8496, longitude: -4.2056, team: "Celtic" },
-            "rangers": { name: "Ibrox Stadium", latitude: 55.8530, longitude: -4.3091, team: "Rangers" },
-            "aberdeen": { name: "Pittodrie Stadium", latitude: 57.1592, longitude: -2.0880, team: "Aberdeen" },
-            "hearts": { name: "Tynecastle Park", latitude: 55.9384, longitude: -3.2320, team: "Hearts" },
-            "heart of midlothian": { name: "Tynecastle Park", latitude: 55.9384, longitude: -3.2320, team: "Hearts" },
-            "hibernian": { name: "Easter Road", latitude: 55.9615, longitude: -3.1656, team: "Hibernian" },
-            "kilmarnock": { name: "Rugby Park", latitude: 55.5947, longitude: -4.5017, team: "Kilmarnock" },
-            "motherwell": { name: "Fir Park", latitude: 55.7814, longitude: -3.9820, team: "Motherwell" },
-            "st mirren": { name: "SMiSA Stadium", latitude: 55.8342, longitude: -4.4331, team: "St Mirren" },
-            "dundee": { name: "Dens Park", latitude: 56.4746, longitude: -2.9707, team: "Dundee" },
-            "dundee united": { name: "Tannadice Park", latitude: 56.4751, longitude: -2.9693, team: "Dundee United" },
-            "livingston": { name: "Tony Macaroni Arena", latitude: 55.9000, longitude: -3.5167, team: "Livingston" },
-            "falkirk": { name: "Falkirk Stadium", latitude: 56.0011, longitude: -3.7836, team: "Falkirk" },
-            "partick thistle": { name: "Firhill Stadium", latitude: 55.8750, longitude: -4.2792, team: "Partick Thistle" },
-            "st johnstone": { name: "McDiarmid Park", latitude: 56.3784, longitude: -3.4775, team: "St Johnstone" },
-            "ross county": { name: "Global Energy Stadium", latitude: 57.5943, longitude: -4.4267, team: "Ross County" }
+            // SPFL Premiership - Updated to match new CSV structure
+            "celtic": { 
+                stadiumName: "Celtic Park", 
+                latitude: 55.8496, 
+                longitude: -4.2056, 
+                team: "Celtic",
+                teamId: "133647",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Glasgow",
+                capacity: "60411",
+                postCode: "G40 3RE",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "rangers": { 
+                stadiumName: "Ibrox Stadium", 
+                latitude: 55.8530, 
+                longitude: -4.3091, 
+                team: "Rangers",
+                teamId: "133602",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Glasgow",
+                capacity: "50817",
+                postCode: "G51 2XD",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "aberdeen": { 
+                stadiumName: "Pittodrie Stadium", 
+                latitude: 57.1592, 
+                longitude: -2.0880, 
+                team: "Aberdeen",
+                teamId: "133604",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Aberdeen",
+                capacity: "20866",
+                postCode: "AB24 5QH",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "hearts": { 
+                stadiumName: "Tynecastle Park", 
+                latitude: 55.9384, 
+                longitude: -3.2320, 
+                team: "Hearts",
+                teamId: "133653",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Edinburgh",
+                capacity: "20099",
+                postCode: "EH11 2NL",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "heart of midlothian": { 
+                stadiumName: "Tynecastle Park", 
+                latitude: 55.9384, 
+                longitude: -3.2320, 
+                team: "Hearts",
+                teamId: "133653",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Edinburgh",
+                capacity: "20099",
+                postCode: "EH11 2NL",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "hibernian": { 
+                stadiumName: "Easter Road", 
+                latitude: 55.9615, 
+                longitude: -3.1656, 
+                team: "Hibernian",
+                teamId: "133597",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Edinburgh",
+                capacity: "20421",
+                postCode: "EH7 5QG",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "kilmarnock": { 
+                stadiumName: "Rugby Park", 
+                latitude: 55.5947, 
+                longitude: -4.5017, 
+                team: "Kilmarnock",
+                teamId: "133710",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Kilmarnock",
+                capacity: "15003",
+                postCode: "KA1 2DP",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "motherwell": { 
+                stadiumName: "Fir Park", 
+                latitude: 55.7814, 
+                longitude: -3.9820, 
+                team: "Motherwell",
+                teamId: "133595",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Motherwell",
+                capacity: "13677",
+                postCode: "ML1 2QN",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "st mirren": { 
+                stadiumName: "SMiSA Stadium", 
+                latitude: 55.8342, 
+                longitude: -4.4331, 
+                team: "St Mirren",
+                teamId: "133654",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Paisley",
+                capacity: "8023",
+                postCode: "PA3 2EJ",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "dundee": { 
+                stadiumName: "Dens Park", 
+                latitude: 56.4746, 
+                longitude: -2.9707, 
+                team: "Dundee",
+                teamId: "133652",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Dundee",
+                capacity: "11506",
+                postCode: "DD3 7JW",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "dundee united": { 
+                stadiumName: "Tannadice Park", 
+                latitude: 56.4751, 
+                longitude: -2.9693, 
+                team: "Dundee United",
+                teamId: "133715",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Dundee",
+                capacity: "14223",
+                postCode: "DD3 7JW",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "livingston": { 
+                stadiumName: "Tony Macaroni Arena", 
+                latitude: 55.9000, 
+                longitude: -3.5167, 
+                team: "Livingston",
+                teamId: "134777",
+                country: "Scotland",
+                league: "Scottish Championship",
+                leagueId: "4329",
+                location: "Livingston",
+                capacity: "9713",
+                postCode: "EH54 7DN",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "falkirk": { 
+                stadiumName: "Falkirk Stadium", 
+                latitude: 56.0011, 
+                longitude: -3.7836, 
+                team: "Falkirk",
+                teamId: "133651",
+                country: "Scotland",
+                league: "Scottish Championship",
+                leagueId: "4329",
+                location: "Falkirk",
+                capacity: "8750",
+                postCode: "FK2 9DX",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "partick thistle": { 
+                stadiumName: "Firhill Stadium", 
+                latitude: 55.8750, 
+                longitude: -4.2792, 
+                team: "Partick Thistle",
+                teamId: "133650",
+                country: "Scotland",
+                league: "Scottish Championship",
+                leagueId: "4329",
+                location: "Glasgow",
+                capacity: "10102",
+                postCode: "G20 7AL",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "st johnstone": { 
+                stadiumName: "McDiarmid Park", 
+                latitude: 56.3784, 
+                longitude: -3.4775, 
+                team: "St Johnstone",
+                teamId: "133603",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Perth",
+                capacity: "10696",
+                postCode: "PH1 2SJ",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            },
+            "ross county": { 
+                stadiumName: "Global Energy Stadium", 
+                latitude: 57.5943, 
+                longitude: -4.4267, 
+                team: "Ross County",
+                teamId: "133714",
+                country: "Scotland",
+                league: "Scottish Premiership",
+                leagueId: "4328",
+                location: "Dingwall",
+                capacity: "6541",
+                postCode: "IV15 9QZ",
+                nationalCupId: "4324",
+                leagueCupName: "",
+                leagueCupId: ""
+            }
         };
 
         for (const [key, value] of Object.entries(grounds)) {
-            this.scottishGrounds.set(key, value);
+            this.scottishStadiums.set(key, value);
         }
     },
 
     // Handle socket notifications
     socketNotificationReceived: function(notification, payload) {
-        // Enable debug mode in SharedRequestManager if any module instance has debug enabled
-        if (payload && payload.debug) {
-            requestManager.enableDebug();
-        }
-        
         switch (notification) {
+            case "SET_API_KEY":
+                // SECURITY PATCH: Securely receive and store API key (only at startup)
+                if (payload && payload.apiKey) {
+                    this.tomtomApiKey = payload.apiKey;
+                    console.log("[MMM-MyTeams-DriveToMatch] ✓ TomTom API key configured via SET_API_KEY notification");
+                } else {
+                    console.warn("[MMM-MyTeams-DriveToMatch] ⚠️  SET_API_KEY notification received without valid API key");
+                }
+                break;
+                
             case "GET_NEXT_FIXTURE":
                 // Add to queue instead of processing immediately
                 this.requestQueue.push({
@@ -989,8 +1428,10 @@ module.exports = NodeHelper.create({
                     console.log(`MMM-MyTeams-DriveToMatch: Queued fixture request (queue size: ${this.requestQueue.length})`);
                 }
                 break;
+                
             case "GET_ROUTES":
-                // Add to queue instead of processing immediately
+                // SECURITY PATCH: API key is no longer expected in GET_ROUTES payload
+                // It will be retrieved from environment or stored configuration
                 this.requestQueue.push({
                     type: "routes",
                     config: payload,
@@ -1000,10 +1441,60 @@ module.exports = NodeHelper.create({
                     console.log(`MMM-MyTeams-DriveToMatch: Queued routes request (queue size: ${this.requestQueue.length})`);
                 }
                 break;
+                
             case "SAVE_ROUTE":
                 // Handle route save request immediately (not queued)
                 this.saveRouteToFile(payload);
                 break;
+                
+            case "REFRESH_STADIUM_CACHE":
+                // Force refresh of stadium database cache
+                this.refreshStadiumCache();
+                break;
+        }
+    },
+    
+    // Refresh stadium cache by re-parsing CSV
+    refreshStadiumCache: function() {
+        try {
+            const csvPath = path.join(__dirname, "football_teams_database.csv");
+            
+            // Delete existing cache
+            if (fs.existsSync(STADIUM_CACHE_FILE)) {
+                fs.unlinkSync(STADIUM_CACHE_FILE);
+                console.log("[MMM-MyTeams-DriveToMatch] Deleted old stadium cache");
+            }
+            
+            // Clear current stadium data
+            this.scottishStadiums.clear();
+            
+            // Reload from CSV
+            if (fs.existsSync(csvPath)) {
+                const csvData = fs.readFileSync(csvPath, "utf8");
+                this.parseGroundsCSV(csvData);
+                console.log("[MMM-MyTeams-DriveToMatch] Reloaded football teams database from CSV");
+                
+                // Save new cache
+                saveStadiumCache(this.scottishStadiums, csvPath);
+                
+                // Notify front-end of successful refresh
+                this.sendSocketNotification("STADIUM_CACHE_REFRESHED", {
+                    success: true,
+                    stadiumCount: this.scottishStadiums.size
+                });
+            } else {
+                console.error("[MMM-MyTeams-DriveToMatch] CSV file not found during cache refresh");
+                this.sendSocketNotification("STADIUM_CACHE_REFRESHED", {
+                    success: false,
+                    error: "CSV file not found"
+                });
+            }
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error refreshing stadium cache:", error);
+            this.sendSocketNotification("STADIUM_CACHE_REFRESHED", {
+                success: false,
+                error: error.message
+            });
         }
     },
 
@@ -1242,15 +1733,18 @@ module.exports = NodeHelper.create({
                 timestamp: Date.now()
             });
 
+            // Calculate adaptive cache TTL based on days until fixture
+            const adaptiveTTL = calculateAdaptiveCacheTTL(nextFixture.date);
+
             // Update disk cache
             cache = {
                 ts: Date.now(),
-                ttl: 1 * 60 * 1000,
+                ttl: adaptiveTTL,
                 source: usedSource,
                 key: cacheKey,
                 data: fixture
             };
-            saveCacheToDisk(1 * 60 * 1000);
+            saveCacheToDisk(adaptiveTTL);
 
             // Send response with instance ID for filtering
             this.sendSocketNotification("FIXTURE_DATA", {
@@ -1286,10 +1780,17 @@ module.exports = NodeHelper.create({
         const opponent = fixture.opponent;
         const competition = (fixture.competition || "").toLowerCase();
         
-        if (config.debug) {
-            console.log(`MMM-MyTeams-DriveToMatch: Processing fixture - ${config.teamName} vs ${opponent}`);
-            console.log(`MMM-MyTeams-DriveToMatch: Fixture homeAway field: "${fixture.homeAway}" (isHome: ${isHome})`);
-        }
+        // ALWAYS log when processing fixtures to help debug venue coordinate issues
+        console.log(`[MMM-MyTeams-DriveToMatch] ========== PROCESSING FIXTURE ==========`);
+        console.log(`[MMM-MyTeams-DriveToMatch] Fixture details:`, {
+            opponent: opponent,
+            homeAway: fixture.homeAway,
+            isHome: isHome,
+            competition: fixture.competition,
+            date: fixture.date,
+            homeTeam: fixture.homeTeam,
+            awayTeam: fixture.awayTeam
+        });
         
         // Check if this is a cup semi-final or final at Hampden Park
         const isHampdenFixture = this.isHampdenParkFixture(competition, fixture);
@@ -1298,31 +1799,36 @@ module.exports = NodeHelper.create({
         if (isHampdenFixture) {
             // Use Hampden Park coordinates for cup semi-finals and finals
             venue = {
-                name: "Hampden Park",
+                stadiumName: "Hampden Park",
                 latitude: 55.8256,
                 longitude: -4.2519,
                 team: "Queen's Park",
                 postCode: "G42 9BA"  // Hampden Park postcode from CSV database
             };
-            if (config.debug) {
-                console.log(`MMM-MyTeams-DriveToMatch: Using Hampden Park for ${competition} fixture vs ${opponent}`);
-            }
+            console.log(`[MMM-MyTeams-DriveToMatch] Using Hampden Park for ${competition} fixture vs ${opponent}`);
         } else {
             // Get venue coordinates based on home team
             // If isHome is true, venue is Celtic's home ground (Celtic Park)
             // If isHome is false (away match), venue is the opponent's ground
             const venueTeam = isHome ? config.teamName : opponent;
-            if (config.debug) {
-                console.log(`MMM-MyTeams-DriveToMatch: Looking up venue for team: ${venueTeam} (isHome: ${isHome}, so venue should be ${isHome ? config.teamName + "'s ground" : opponent + "'s ground"})`);
-            }
+            console.log(`[MMM-MyTeams-DriveToMatch] Looking up venue for team: "${venueTeam}" (isHome: ${isHome})`);
+            console.log(`[MMM-MyTeams-DriveToMatch] Venue should be: ${isHome ? config.teamName + "'s ground (Celtic Park)" : opponent + "'s ground"}`);
+            
             venue = await this.getVenueCoordinates(venueTeam, null);
-            if (config.debug) {
-                console.log(`MMM-MyTeams-DriveToMatch: Venue resolved:`, {
-                    name: venue.name,
-                    latitude: venue.latitude,
-                    longitude: venue.longitude,
-                    team: venue.team
-                });
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] Venue lookup result:`, {
+                stadiumName: venue.stadiumName,
+                latitude: venue.latitude,
+                longitude: venue.longitude,
+                team: venue.team,
+                postCode: venue.postCode
+            });
+            
+            // Check if coordinates are null
+            if (venue.latitude === null || venue.longitude === null) {
+                console.warn(`[MMM-MyTeams-DriveToMatch] ⚠️  WARNING: Venue coordinates are NULL!`);
+                console.warn(`[MMM-MyTeams-DriveToMatch] ⚠️  Team searched: "${venueTeam}"`);
+                console.warn(`[MMM-MyTeams-DriveToMatch] ⚠️  This team may not be in the stadium database`);
             }
         }
 
@@ -1340,7 +1846,7 @@ module.exports = NodeHelper.create({
             console.log(`MMM-MyTeams-DriveToMatch: Processed fixture summary:`, {
                 matchup: `${processedFixture.homeTeam} vs ${processedFixture.awayTeam}`,
                 isHome: processedFixture.isHome,
-                venue: processedFixture.venue.name,
+                venue: processedFixture.venue.stadiumName,
                 venueCoords: `${processedFixture.venue.latitude}, ${processedFixture.venue.longitude}`,
                 competition: processedFixture.competition
             });
@@ -1383,44 +1889,56 @@ module.exports = NodeHelper.create({
     // Get venue coordinates
     getVenueCoordinates: async function(teamName, venueName) {
         try {
+            console.log(`[MMM-MyTeams-DriveToMatch] getVenueCoordinates called with teamName: "${teamName}", venueName: "${venueName || 'null'}"`);
+            
             const cacheKey = `${teamName}_${venueName || ''}`.toLowerCase();
             const cached = this.venueCache.get(cacheKey);
             
             if (cached) {
+                console.log(`[MMM-MyTeams-DriveToMatch] Found in venue cache:`, cached);
                 return cached;
             }
 
             // Try to find in Scottish grounds database
             const teamKey = teamName.toLowerCase();
-            let venue = this.scottishGrounds.get(teamKey);
+            console.log(`[MMM-MyTeams-DriveToMatch] Searching stadium database for: "${teamKey}"`);
+            
+            let venue = this.scottishStadiums.get(teamKey);
             
             if (!venue) {
+                console.log(`[MMM-MyTeams-DriveToMatch] No exact match found, trying fuzzy matching...`);
                 // Try alternative team name matching
-                for (const [key, value] of this.scottishGrounds.entries()) {
+                for (const [key, value] of this.scottishStadiums.entries()) {
                     if (teamName.toLowerCase().includes(key) || key.includes(teamName.toLowerCase())) {
+                        console.log(`[MMM-MyTeams-DriveToMatch] Fuzzy match found! Database key: "${key}" matched team: "${teamName}"`);
                         venue = value;
                         break;
                     }
                 }
+            } else {
+                console.log(`[MMM-MyTeams-DriveToMatch] Exact match found in database!`);
             }
 
             if (venue) {
                 const result = {
-                    name: venueName || venue.name,
+                    stadiumName: venueName || venue.stadiumName,
                     latitude: venue.latitude,
                     longitude: venue.longitude,
                     team: venue.team,
                     postCode: venue.postCode || null  // Include postcode from CSV database
                 };
                 
+                console.log(`[MMM-MyTeams-DriveToMatch] ✓ Venue found:`, result);
                 this.venueCache.set(cacheKey, result);
                 return result;
             }
 
             // If not found, return null (will show venue name but no routes)
-            console.warn(`MMM-MyTeams-DriveToMatch: Venue coordinates not found for ${teamName} at ${venueName || 'unknown venue'}`);
+            console.warn(`[MMM-MyTeams-DriveToMatch] ⚠️  Venue NOT found in database for team: "${teamName}"`);
+            console.warn(`[MMM-MyTeams-DriveToMatch] ⚠️  Available teams in database (first 10):`, Array.from(this.scottishStadiums.keys()).slice(0, 10));
+            
             return {
-                name: venueName || `${teamName} Ground`,
+                stadiumName: venueName || `${teamName} Ground`,
                 latitude: null,
                 longitude: null,
                 team: teamName,
@@ -1434,8 +1952,16 @@ module.exports = NodeHelper.create({
     },
 
     // Get routes using TomTom API - EXACT METHODOLOGY FROM MMM-TomTomCalculateRouteTraffic
+    // SECURITY PATCH: API key is now passed via secure configuration, NOT through socket notifications
     getRoutes: async function(config) {
         try {
+            // SECURITY: Retrieve API key from environment or stored config, NOT from socket payload
+            const apiKey = process.env.TOMTOM_API_KEY || this.tomtomApiKey;
+            
+            if (!apiKey) {
+                throw new Error("TomTom API key not configured. Set TOMTOM_API_KEY environment variable or configure apiTomTomKey in module config.");
+            }
+            
             const timestamp = new Date().toLocaleTimeString('en-GB');
             if (config.debug) {
                 console.log(`MMM-MyTeams-DriveToMatch: [${timestamp}] Calculating routes`, {
@@ -1443,7 +1969,8 @@ module.exports = NodeHelper.create({
                     to: `${config.endLat},${config.endLng}`,
                     maxRoutes: config.maxRoutes,
                     isEuropeanFixture: config.isEuropeanFixture,
-                    isAwayMatch: config.isAwayMatch
+                    isAwayMatch: config.isAwayMatch,
+                    apiKeySource: process.env.TOMTOM_API_KEY ? 'environment' : 'config'
                 });
             }
 
@@ -1460,9 +1987,9 @@ module.exports = NodeHelper.create({
             for (let routeTypeIndex = 0; routeTypeIndex < maxRoutesToFetch; routeTypeIndex++) {
                 const routeType = routeTypes[routeTypeIndex];
                 
-                // Build URL with specific routeType
-                let url = `${baseUrl}/${locations}/json?key=${config.apiKey}`;
-                url += `&routeType=${routeType}`;
+                // SECURITY PATCH: Build URL WITHOUT API key (will be in Authorization header instead)
+                let url = `${baseUrl}/${locations}/json`;
+                url += `?routeType=${routeType}`;
                 url += `&traffic=true`;
                 url += `&instructionsType=text&language=en-GB`;
                 
@@ -1474,13 +2001,21 @@ module.exports = NodeHelper.create({
                     }
                 }
                 
+                // SECURITY PATCH: Log sanitized URL (without API key)
                 if (config.debug) {
                     console.log(`MMM-MyTeams-DriveToMatch: Fetching ${routeType} route`);
-                    console.log("MMM-MyTeams-DriveToMatch: TomTom API URL:", url.replace(config.apiKey, 'API_KEY_HIDDEN'));
+                    console.log("MMM-MyTeams-DriveToMatch: TomTom API URL (sanitized):", sanitizeUrlForLogging(url));
                 }
                 
                 try {
-                    const response = await doFetch(url, {}, config.timeout || 15000);
+                    // SECURITY PATCH: Pass API key via Authorization header instead of URL parameter
+                    const requestOptions = {
+                        headers: {
+                            "X-API-Key": apiKey,
+                            "Authorization": `Bearer ${apiKey}`
+                        }
+                    };
+                    const response = await doFetch(url, requestOptions, config.timeout || 15000);
                     const data = await response.json();
                     
                     if (config.debug) {
@@ -1624,27 +2159,93 @@ module.exports = NodeHelper.create({
         
         // Comprehensive list of all major bridge crossings in Scotland with GPS coordinates
         // Format: { name, lat, lng, radius (in km for detection) }
+               // Comprehensive list of all major bridge crossings in UK and mainland Europe with GPS coordinates
+        // Format: { name, lat, lng, radius (in km for detection), region }
         const bridges = [
-            { name: 'Queensferry Crossing', lat: 56.0009, lng: -3.4047, radius: 0.5 },
-            { name: 'Forth Road Bridge', lat: 56.0020, lng: -3.4080, radius: 0.5 },
-            { name: 'Forth Bridge', lat: 56.0000, lng: -3.3886, radius: 0.5 },
-            { name: 'Erskine Bridge', lat: 55.9247, lng: -4.4503, radius: 0.5 },
-            { name: 'Kingston Bridge', lat: 55.8575, lng: -4.2789, radius: 0.3 },
-            { name: 'Kincardine Bridge', lat: 56.0608, lng: -3.7258, radius: 0.5 },
-            { name: 'Clackmannanshire Bridge', lat: 56.0847, lng: -3.7147, radius: 0.5 },
-            { name: 'Tay Road Bridge', lat: 56.4500, lng: -2.9667, radius: 0.5 },
-            { name: 'Clyde Arc', lat: 55.8597, lng: -4.2894, radius: 0.2 },
-            { name: 'Squinty Bridge', lat: 55.8597, lng: -4.2894, radius: 0.2 },
-            { name: 'Clyde Bridge', lat: 55.8444, lng: -4.2506, radius: 0.2 },
-            { name: 'Dalmarnock Bridge', lat: 55.8444, lng: -4.2000, radius: 0.2 },
-            { name: 'Rutherglen Bridge', lat: 55.8333, lng: -4.2167, radius: 0.2 },
-            { name: 'King George V Bridge', lat: 55.8500, lng: -4.2500, radius: 0.2 },
-            { name: 'Skye Bridge', lat: 57.2733, lng: -5.7311, radius: 0.5 },
-            { name: 'Connel Bridge', lat: 56.4500, lng: -5.3833, radius: 0.3 },
-            { name: 'Ballachulish Bridge', lat: 56.6833, lng: -5.1833, radius: 0.3 },
-            { name: 'Cromarty Bridge', lat: 57.6833, lng: -4.0333, radius: 0.5 },
-            { name: 'Dornoch Firth Bridge', lat: 57.8833, lng: -4.0333, radius: 0.5 },
-            { name: 'Friarton Bridge', lat: 56.3833, lng: -3.4000, radius: 0.3 }
+            // Scotland
+            { name: 'Queensferry Crossing', lat: 56.0009, lng: -3.4047, radius: 0.5, region: 'Scotland' },
+            { name: 'Forth Road Bridge', lat: 56.0020, lng: -3.4080, radius: 0.5, region: 'Scotland' },
+            { name: 'Forth Bridge', lat: 56.0000, lng: -3.3886, radius: 0.5, region: 'Scotland' },
+            { name: 'Erskine Bridge', lat: 55.9247, lng: -4.4503, radius: 0.5, region: 'Scotland' },
+            { name: 'Kingston Bridge', lat: 55.8575, lng: -4.2789, radius: 0.3, region: 'Scotland' },
+            { name: 'Kincardine Bridge', lat: 56.0608, lng: -3.7258, radius: 0.5, region: 'Scotland' },
+            { name: 'Clackmannanshire Bridge', lat: 56.0847, lng: -3.7147, radius: 0.5, region: 'Scotland' },
+            { name: 'Tay Road Bridge', lat: 56.4500, lng: -2.9667, radius: 0.5, region: 'Scotland' },
+            { name: 'Clyde Arc', lat: 55.8597, lng: -4.2894, radius: 0.2, region: 'Scotland' },
+            { name: 'Squinty Bridge', lat: 55.8597, lng: -4.2894, radius: 0.2, region: 'Scotland' },
+            { name: 'Clyde Bridge', lat: 55.8444, lng: -4.2506, radius: 0.2, region: 'Scotland' },
+            { name: 'Dalmarnock Bridge', lat: 55.8444, lng: -4.2000, radius: 0.2, region: 'Scotland' },
+            { name: 'Rutherglen Bridge', lat: 55.8333, lng: -4.2167, radius: 0.2, region: 'Scotland' },
+            { name: 'King George V Bridge', lat: 55.8500, lng: -4.2500, radius: 0.2, region: 'Scotland' },
+            { name: 'Skye Bridge', lat: 57.2733, lng: -5.7311, radius: 0.5, region: 'Scotland' },
+            { name: 'Connel Bridge', lat: 56.4500, lng: -5.3833, radius: 0.3, region: 'Scotland' },
+            { name: 'Ballachulish Bridge', lat: 56.6833, lng: -5.1833, radius: 0.3, region: 'Scotland' },
+            { name: 'Cromarty Bridge', lat: 57.6833, lng: -4.0333, radius: 0.5, region: 'Scotland' },
+            { name: 'Dornoch Firth Bridge', lat: 57.8833, lng: -4.0333, radius: 0.5, region: 'Scotland' },
+            { name: 'Friarton Bridge', lat: 56.3833, lng: -3.4000, radius: 0.3, region: 'Scotland' },
+            
+            // England
+            { name: 'Dartford Crossing', lat: 51.4833, lng: 0.2667, radius: 0.8, region: 'England' },
+            { name: 'Queen Elizabeth II Bridge', lat: 51.4833, lng: 0.2667, radius: 0.8, region: 'England' },
+            { name: 'Humber Bridge', lat: 53.7056, lng: -0.4500, radius: 1.0, region: 'England' },
+            { name: 'Severn Bridge', lat: 51.6089, lng: -2.6336, radius: 0.8, region: 'England-Wales' },
+            { name: 'Second Severn Crossing', lat: 51.5833, lng: -2.6500, radius: 0.8, region: 'England-Wales' },
+            { name: 'Tyne Bridge', lat: 54.9689, lng: -1.6025, radius: 0.3, region: 'England' },
+            { name: 'Tyne Tunnel', lat: 54.9833, lng: -1.4667, radius: 0.5, region: 'England' },
+            { name: 'Tamar Bridge', lat: 50.4089, lng: -4.2167, radius: 0.5, region: 'England' },
+            { name: 'Clifton Suspension Bridge', lat: 51.4553, lng: -2.6274, radius: 0.3, region: 'England' },
+            { name: 'Tower Bridge', lat: 51.5055, lng: -0.0754, radius: 0.2, region: 'England' },
+            { name: 'London Bridge', lat: 51.5078, lng: -0.0877, radius: 0.2, region: 'England' },
+            { name: 'Millennium Bridge', lat: 51.5097, lng: -0.0984, radius: 0.2, region: 'England' },
+            { name: 'Tees Transporter Bridge', lat: 54.5833, lng: -1.2333, radius: 0.3, region: 'England' },
+            { name: 'Orwell Bridge', lat: 52.0167, lng: 1.2167, radius: 0.5, region: 'England' },
+            { name: 'Itchen Bridge', lat: 50.9000, lng: -1.3833, radius: 0.3, region: 'England' },
+            
+            // Wales
+            { name: 'Britannia Bridge', lat: 53.2167, lng: -4.2500, radius: 0.5, region: 'Wales' },
+            { name: 'Menai Suspension Bridge', lat: 53.2236, lng: -4.1653, radius: 0.5, region: 'Wales' },
+            { name: 'Newport Transporter Bridge', lat: 51.5667, lng: -2.9833, radius: 0.3, region: 'Wales' },
+            { name: 'Cleddau Bridge', lat: 51.7000, lng: -4.9667, radius: 0.5, region: 'Wales' },
+            
+            // Northern Ireland
+            { name: 'Foyle Bridge', lat: 55.0167, lng: -7.2833, radius: 0.5, region: 'Northern Ireland' },
+            { name: 'Craigavon Bridge', lat: 55.0000, lng: -7.3167, radius: 0.3, region: 'Northern Ireland' },
+            { name: 'Peace Bridge', lat: 55.0000, lng: -7.3167, radius: 0.2, region: 'Northern Ireland' },
+            { name: 'Queen Elizabeth Bridge Belfast', lat: 54.5833, lng: -5.9167, radius: 0.3, region: 'Northern Ireland' },
+            
+            // Ireland
+            { name: 'Samuel Beckett Bridge', lat: 53.3486, lng: -6.2397, radius: 0.3, region: 'Ireland' },
+            { name: 'East Link Bridge', lat: 53.3472, lng: -6.2292, radius: 0.3, region: 'Ireland' },
+            { name: 'River Suir Bridge', lat: 52.2500, lng: -7.1167, radius: 0.5, region: 'Ireland' },
+            { name: 'Rose Fitzgerald Kennedy Bridge', lat: 52.3833, lng: -6.9167, radius: 0.8, region: 'Ireland' },
+            
+            // France
+            { name: 'Millau Viaduct', lat: 44.0797, lng: 3.0219, radius: 1.5, region: 'France' },
+            { name: 'Pont de Normandie', lat: 49.4333, lng: 0.2667, radius: 1.0, region: 'France' },
+            { name: 'Pont de Tancarville', lat: 49.4833, lng: 0.4667, radius: 0.8, region: 'France' },
+            { name: 'Viaduc de la Souleuvre', lat: 48.9167, lng: -0.8333, radius: 0.5, region: 'France' },
+            { name: 'Pont de Saint-Nazaire', lat: 47.2667, lng: -2.2000, radius: 1.0, region: 'France' },
+            { name: 'Pont d\'Aquitaine', lat: 44.8833, lng: -0.5333, radius: 0.8, region: 'France' },
+            { name: 'Pont de Cheviré', lat: 47.2167, lng: -1.6000, radius: 0.5, region: 'France' },
+            { name: 'Viaduc de Garabit', lat: 44.9667, lng: 3.1833, radius: 0.5, region: 'France' },
+            
+            // Spain & Portugal
+            { name: 'Vasco da Gama Bridge', lat: 38.7667, lng: -9.0833, radius: 1.5, region: 'Portugal' },
+            { name: '25 de Abril Bridge', lat: 38.6892, lng: -9.1778, radius: 1.0, region: 'Portugal' },
+            { name: 'Viaducto de Almonte', lat: 39.8167, lng: -6.1833, radius: 0.8, region: 'Spain' },
+            { name: 'Puente de Rande', lat: 42.2833, lng: -8.6500, radius: 0.8, region: 'Spain' },
+            { name: 'Puente Colgante', lat: 43.3233, lng: -3.0178, radius: 0.3, region: 'Spain' },
+            { name: 'Puente de la Constitución de 1812', lat: 36.5167, lng: -6.2667, radius: 1.0, region: 'Spain' },
+            { name: 'Puente del Alamillo', lat: 37.4167, lng: -6.0000, radius: 0.5, region: 'Spain' },
+            
+            // Italy
+            { name: 'Ponte Vecchio', lat: 43.7681, lng: 11.2531, radius: 0.2, region: 'Italy' },
+            { name: 'Rialto Bridge', lat: 45.4381, lng: 12.3358, radius: 0.2, region: 'Italy' },
+            { name: 'Ponte della Libertà', lat: 45.4500, lng: 12.2833, radius: 0.8, region: 'Italy' },
+            { name: 'Ponte Morandi (Genoa)', lat: 44.4333, lng: 8.8833, radius: 0.5, region: 'Italy' },
+            { name: 'Viadotto Italia', lat: 38.1167, lng: 15.6500, radius: 1.0, region: 'Italy' },
+            { name: 'Ponte Vasco da Gama', lat: 45.4167, lng: 12.3333, radius: 0.5, region: 'Italy' },
+
         ];
         
         // Ferry route detection for European AWAY fixtures
@@ -1743,27 +2344,88 @@ module.exports = NodeHelper.create({
                 let ferryName = null;
                 
                 // Common UK-Europe ferry routes with operator and crossing time information
-                const ferryRoutes = [
-                    { keywords: ['dover', 'calais'], name: 'Dover-Calais Ferry', operator: 'P&O/DFDS', duration: 90 },
-                    { keywords: ['dover', 'dunkirk', 'dunkerque'], name: 'Dover-Dunkirk Ferry', operator: 'DFDS', duration: 120 },
-                    { keywords: ['harwich', 'hook of holland', 'hoek van holland'], name: 'Harwich-Hook of Holland Ferry', operator: 'Stena Line', duration: 390 },
-                    { keywords: ['hull', 'rotterdam'], name: 'Hull-Rotterdam Ferry', operator: 'P&O', duration: 660 },
-                    { keywords: ['hull', 'zeebrugge'], name: 'Hull-Zeebrugge Ferry', operator: 'P&O', duration: 780 },
-                    { keywords: ['newcastle', 'amsterdam', 'ijmuiden'], name: 'Newcastle-Amsterdam Ferry', operator: 'DFDS', duration: 960 },
-                    { keywords: ['portsmouth', 'caen', 'ouistreham'], name: 'Portsmouth-Caen Ferry', operator: 'Brittany Ferries', duration: 360 },
-                    { keywords: ['portsmouth', 'cherbourg'], name: 'Portsmouth-Cherbourg Ferry', operator: 'Brittany Ferries', duration: 180 },
-                    { keywords: ['portsmouth', 'st malo', 'saint malo'], name: 'Portsmouth-St Malo Ferry', operator: 'Brittany Ferries', duration: 540 },
-                    { keywords: ['portsmouth', 'le havre'], name: 'Portsmouth-Le Havre Ferry', operator: 'Brittany Ferries', duration: 330 },
-                    { keywords: ['portsmouth', 'bilbao'], name: 'Portsmouth-Bilbao Ferry', operator: 'Brittany Ferries', duration: 1440 },
-                    { keywords: ['portsmouth', 'santander'], name: 'Portsmouth-Santander Ferry', operator: 'Brittany Ferries', duration: 1440 },
-                    { keywords: ['newhaven', 'dieppe'], name: 'Newhaven-Dieppe Ferry', operator: 'DFDS', duration: 240 },
-                    { keywords: ['plymouth', 'roscoff'], name: 'Plymouth-Roscoff Ferry', operator: 'Brittany Ferries', duration: 360 },
-                    { keywords: ['plymouth', 'santander'], name: 'Plymouth-Santander Ferry', operator: 'Brittany Ferries', duration: 1200 },
-                    { keywords: ['poole', 'cherbourg'], name: 'Poole-Cherbourg Ferry', operator: 'Brittany Ferries', duration: 270 },
-                    { keywords: ['fishguard', 'rosslare'], name: 'Fishguard-Rosslare Ferry', operator: 'Stena Line', duration: 210 },
-                    { keywords: ['holyhead', 'dublin'], name: 'Holyhead-Dublin Ferry', operator: 'Irish Ferries/Stena', duration: 195 },
-                    { keywords: ['cairnryan', 'larne'], name: 'Cairnryan-Larne Ferry', operator: 'P&O', duration: 120 },
-                    { keywords: ['cairnryan', 'belfast'], name: 'Cairnryan-Belfast Ferry', operator: 'Stena Line', duration: 135 }
+                                const ferryRoutes = [
+                    // UK to Continental Europe
+                    { keywords: ['dover', 'calais'], name: 'Dover-Calais Ferry', operator: 'P&O/DFDS', duration: 90, region: 'UK-France' },
+                    { keywords: ['dover', 'dunkirk', 'dunkerque'], name: 'Dover-Dunkirk Ferry', operator: 'DFDS', duration: 120, region: 'UK-France' },
+                    { keywords: ['harwich', 'hook of holland', 'hoek van holland'], name: 'Harwich-Hook of Holland Ferry', operator: 'Stena Line', duration: 390, region: 'UK-Netherlands' },
+                    { keywords: ['hull', 'rotterdam'], name: 'Hull-Rotterdam Ferry', operator: 'P&O', duration: 660, region: 'UK-Netherlands' },
+                    { keywords: ['hull', 'zeebrugge'], name: 'Hull-Zeebrugge Ferry', operator: 'P&O', duration: 780, region: 'UK-Belgium' },
+                    { keywords: ['newcastle', 'amsterdam', 'ijmuiden'], name: 'Newcastle-Amsterdam Ferry', operator: 'DFDS', duration: 960, region: 'UK-Netherlands' },
+                    { keywords: ['portsmouth', 'caen', 'ouistreham'], name: 'Portsmouth-Caen Ferry', operator: 'Brittany Ferries', duration: 360, region: 'UK-France' },
+                    { keywords: ['portsmouth', 'cherbourg'], name: 'Portsmouth-Cherbourg Ferry', operator: 'Brittany Ferries', duration: 180, region: 'UK-France' },
+                    { keywords: ['portsmouth', 'st malo', 'saint malo'], name: 'Portsmouth-St Malo Ferry', operator: 'Brittany Ferries', duration: 540, region: 'UK-France' },
+                    { keywords: ['portsmouth', 'le havre'], name: 'Portsmouth-Le Havre Ferry', operator: 'Brittany Ferries', duration: 330, region: 'UK-France' },
+                    { keywords: ['portsmouth', 'bilbao'], name: 'Portsmouth-Bilbao Ferry', operator: 'Brittany Ferries', duration: 1440, region: 'UK-Spain' },
+                    { keywords: ['portsmouth', 'santander'], name: 'Portsmouth-Santander Ferry', operator: 'Brittany Ferries', duration: 1440, region: 'UK-Spain' },
+                    { keywords: ['newhaven', 'dieppe'], name: 'Newhaven-Dieppe Ferry', operator: 'DFDS', duration: 240, region: 'UK-France' },
+                    { keywords: ['plymouth', 'roscoff'], name: 'Plymouth-Roscoff Ferry', operator: 'Brittany Ferries', duration: 360, region: 'UK-France' },
+                    { keywords: ['plymouth', 'santander'], name: 'Plymouth-Santander Ferry', operator: 'Brittany Ferries', duration: 1200, region: 'UK-Spain' },
+                    { keywords: ['poole', 'cherbourg'], name: 'Poole-Cherbourg Ferry', operator: 'Brittany Ferries', duration: 270, region: 'UK-France' },
+                    { keywords: ['fishguard', 'rosslare'], name: 'Fishguard-Rosslare Ferry', operator: 'Stena Line', duration: 210, region: 'UK-Ireland' },
+                    { keywords: ['holyhead', 'dublin'], name: 'Holyhead-Dublin Ferry', operator: 'Irish Ferries/Stena', duration: 195, region: 'UK-Ireland' },
+                    { keywords: ['cairnryan', 'larne'], name: 'Cairnryan-Larne Ferry', operator: 'P&O', duration: 120, region: 'UK-Ireland' },
+                    { keywords: ['cairnryan', 'belfast'], name: 'Cairnryan-Belfast Ferry', operator: 'Stena Line', duration: 135, region: 'UK-Ireland' },
+                    { keywords: ['liverpool', 'dublin'], name: 'Liverpool-Dublin Ferry', operator: 'P&O', duration: 480, region: 'UK-Ireland' },
+                    { keywords: ['pembroke', 'rosslare'], name: 'Pembroke-Rosslare Ferry', operator: 'Irish Ferries', duration: 240, region: 'UK-Ireland' },
+                    
+                    // France to Ireland
+                    { keywords: ['cherbourg', 'rosslare'], name: 'Cherbourg-Rosslare Ferry', operator: 'Stena Line', duration: 1080, region: 'France-Ireland' },
+                    { keywords: ['cherbourg', 'dublin'], name: 'Cherbourg-Dublin Ferry', operator: 'Irish Ferries', duration: 1140, region: 'France-Ireland' },
+                    { keywords: ['roscoff', 'cork'], name: 'Roscoff-Cork Ferry', operator: 'Brittany Ferries', duration: 840, region: 'France-Ireland' },
+                    
+                    // France to Spain
+                    { keywords: ['sete', 'tangier'], name: 'Sète-Tangier Ferry', operator: 'Grandi Navi Veloci', duration: 2160, region: 'France-Morocco' },
+                    { keywords: ['marseille', 'algiers'], name: 'Marseille-Algiers Ferry', operator: 'Algerie Ferries', duration: 1260, region: 'France-Algeria' },
+                    
+                    // Spain to Morocco
+                    { keywords: ['algeciras', 'tangier'], name: 'Algeciras-Tangier Ferry', operator: 'FRS/Balearia', duration: 90, region: 'Spain-Morocco' },
+                    { keywords: ['tarifa', 'tangier'], name: 'Tarifa-Tangier Ferry', operator: 'FRS', duration: 60, region: 'Spain-Morocco' },
+                    { keywords: ['almeria', 'nador'], name: 'Almeria-Nador Ferry', operator: 'Balearia', duration: 420, region: 'Spain-Morocco' },
+                    
+                    // Spain to Balearic Islands
+                    { keywords: ['barcelona', 'palma', 'mallorca'], name: 'Barcelona-Palma Ferry', operator: 'Balearia/Trasmed', duration: 420, region: 'Spain-Balearics' },
+                    { keywords: ['barcelona', 'ibiza'], name: 'Barcelona-Ibiza Ferry', operator: 'Balearia', duration: 480, region: 'Spain-Balearics' },
+                    { keywords: ['barcelona', 'mahon', 'menorca'], name: 'Barcelona-Mahon Ferry', operator: 'Balearia', duration: 540, region: 'Spain-Balearics' },
+                    { keywords: ['valencia', 'palma', 'mallorca'], name: 'Valencia-Palma Ferry', operator: 'Balearia/Trasmed', duration: 420, region: 'Spain-Balearics' },
+                    { keywords: ['valencia', 'ibiza'], name: 'Valencia-Ibiza Ferry', operator: 'Balearia', duration: 180, region: 'Spain-Balearics' },
+                    { keywords: ['denia', 'ibiza'], name: 'Denia-Ibiza Ferry', operator: 'Balearia', duration: 120, region: 'Spain-Balearics' },
+                    { keywords: ['denia', 'palma', 'mallorca'], name: 'Denia-Palma Ferry', operator: 'Balearia', duration: 240, region: 'Spain-Balearics' },
+                    
+                    // Italy to Spain
+                    { keywords: ['genoa', 'barcelona'], name: 'Genoa-Barcelona Ferry', operator: 'Grandi Navi Veloci', duration: 1200, region: 'Italy-Spain' },
+                    { keywords: ['civitavecchia', 'barcelona'], name: 'Civitavecchia-Barcelona Ferry', operator: 'Grimaldi Lines', duration: 1200, region: 'Italy-Spain' },
+                    
+                    // Italy to Sardinia
+                    { keywords: ['genoa', 'olbia'], name: 'Genoa-Olbia Ferry', operator: 'Moby/Tirrenia', duration: 660, region: 'Italy-Sardinia' },
+                    { keywords: ['genoa', 'porto torres'], name: 'Genoa-Porto Torres Ferry', operator: 'Tirrenia', duration: 720, region: 'Italy-Sardinia' },
+                    { keywords: ['livorno', 'olbia'], name: 'Livorno-Olbia Ferry', operator: 'Moby/Grimaldi', duration: 480, region: 'Italy-Sardinia' },
+                    { keywords: ['civitavecchia', 'olbia'], name: 'Civitavecchia-Olbia Ferry', operator: 'Moby/Tirrenia', duration: 420, region: 'Italy-Sardinia' },
+                    { keywords: ['civitavecchia', 'cagliari'], name: 'Civitavecchia-Cagliari Ferry', operator: 'Tirrenia', duration: 840, region: 'Italy-Sardinia' },
+                    { keywords: ['civitavecchia', 'arbatax'], name: 'Civitavecchia-Arbatax Ferry', operator: 'Tirrenia', duration: 600, region: 'Italy-Sardinia' },
+                    { keywords: ['piombino', 'olbia'], name: 'Piombino-Olbia Ferry', operator: 'Moby', duration: 360, region: 'Italy-Sardinia' },
+                    { keywords: ['naples', 'cagliari'], name: 'Naples-Cagliari Ferry', operator: 'Tirrenia', duration: 780, region: 'Italy-Sardinia' },
+                    
+                    // Italy to Sicily
+                    { keywords: ['genoa', 'palermo'], name: 'Genoa-Palermo Ferry', operator: 'Grandi Navi Veloci', duration: 1200, region: 'Italy-Sicily' },
+                    { keywords: ['livorno', 'palermo'], name: 'Livorno-Palermo Ferry', operator: 'Grimaldi Lines', duration: 1080, region: 'Italy-Sicily' },
+                    { keywords: ['civitavecchia', 'palermo'], name: 'Civitavecchia-Palermo Ferry', operator: 'Grandi Navi Veloci', duration: 840, region: 'Italy-Sicily' },
+                    { keywords: ['naples', 'palermo'], name: 'Naples-Palermo Ferry', operator: 'Tirrenia/Grandi Navi', duration: 660, region: 'Italy-Sicily' },
+                    { keywords: ['salerno', 'palermo'], name: 'Salerno-Palermo Ferry', operator: 'Grimaldi Lines', duration: 600, region: 'Italy-Sicily' },
+                    { keywords: ['villa san giovanni', 'messina'], name: 'Villa San Giovanni-Messina Ferry', operator: 'Caronte/Bluferries', duration: 20, region: 'Italy-Sicily' },
+                    { keywords: ['reggio calabria', 'messina'], name: 'Reggio Calabria-Messina Ferry', operator: 'Bluvia', duration: 25, region: 'Italy-Sicily' },
+                    
+                    // Italy to Corsica
+                    { keywords: ['livorno', 'bastia'], name: 'Livorno-Bastia Ferry', operator: 'Corsica Ferries/Moby', duration: 240, region: 'Italy-Corsica' },
+                    { keywords: ['piombino', 'bastia'], name: 'Piombino-Bastia Ferry', operator: 'Corsica Ferries', duration: 150, region: 'Italy-Corsica' },
+                    { keywords: ['savona', 'bastia'], name: 'Savona-Bastia Ferry', operator: 'Corsica Ferries', duration: 360, region: 'Italy-Corsica' },
+                    
+                    // France to Corsica
+                    { keywords: ['marseille', 'ajaccio'], name: 'Marseille-Ajaccio Ferry', operator: 'Corsica Linea', duration: 720, region: 'France-Corsica' },
+                    { keywords: ['marseille', 'bastia'], name: 'Marseille-Bastia Ferry', operator: 'Corsica Linea', duration: 660, region: 'France-Corsica' },
+                    { keywords: ['nice', 'ajaccio'], name: 'Nice-Ajaccio Ferry', operator: 'Corsica Ferries', duration: 360, region: 'France-Corsica' },
+                    { keywords: ['nice', 'bastia'], name: 'Nice-Bastia Ferry', operator: 'Corsica Ferries', duration: 330, region: 'France-Corsica' }
+
                 ];
                 
                 // Try to match ferry route from instruction text
