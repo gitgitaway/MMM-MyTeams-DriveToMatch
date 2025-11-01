@@ -69,9 +69,13 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 # Navigate to MagicMirror modules
 cd ~/MagicMirror/modules
 
+```
+```bash
 # Clone repository
 git clone https://github.com/gitgitaway/MMM-MyTeams-DriveToMatch
 
+```
+```bash
 # Install dependencies
 cd MMM-MyTeams-DriveToMatch
 npm install
@@ -472,6 +476,7 @@ This is the 6th module in a Celtic-themed MagicMirror setup. All are customisabl
 
 
 **For complete guides, see documentation links at top of README.**
+
 
 
 
