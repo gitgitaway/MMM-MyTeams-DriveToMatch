@@ -437,7 +437,7 @@ See caching configuration to optimize API usage.
 
 | Version | Status | Date | Notable Changes |
 |---------|--------|------|-----------------|
-| v1.5.0 | Current | 2025-11-XX | 🐛 Critical bug fix: Neutral venue coordinate lookup |
+| v1.5.0 | Current | 2025-11-01 | 🐛 Critical bug fix: Neutral venue coordinate lookup |
 | v1.4.3 | Archive | 2025-10-19 | Stadium database expansion (500+ teams) |
 | v1.4.2 | Archive | 2025-10-10 | Bridge detection expansion (110+ bridges) |
 | v1.4.1 | Archive | 2025-10-07 | Documentation & screenshot fixes |
@@ -476,6 +476,7 @@ This is the 6th module in a Celtic-themed MagicMirror setup. All are customisabl
 
 
 **For complete guides, see documentation links at top of README.**
+
 
 
 
