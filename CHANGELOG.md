@@ -165,8 +165,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Bug Fix & Typo Fix | 1.3.0 | ✅ Archived  |
 | Turn-by-Turn Directions | 1.4.0 | ✅  Archived   |
 | Route Saving | 1.4.0 | ✅ Archived  |
-| Stadium Database (500+ teams) | 1.3.0 - 1.4.3 | ✅ Active |
-
-| Adaptive Cache TTL | Unreleased | 🔄 In Progress |
+| Stadium Database (500+ teams) | 1.3.0 - 1.4.3 | ✅  Archived   |
+| Adaptive Cache TTL | 1.4.3  |  ✅  Archived   |
+| Critical bug fix for neturak venue issues | 1.5.0  | ✅ Active |
 
 
