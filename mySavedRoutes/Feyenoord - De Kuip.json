@@ -17,35 +17,9 @@
         "Estimated Fuel Cost": "£68.47"
     },
     "=== TURN-BY-TURN DIRECTIONS ===": [
-        "1. Leave from Castlefield - 0.0 km from start",
-        "2. Turn right onto Castlebank Road - 0.2 km from start",
-        "3. Turn right onto East Bridge/A91 (A91) - 0.2 km from start",
-        "4. At the roundabout take the first exit onto East Bridge/A91 (A91) - 0.3 km from start",
-        "5. Turn left onto East Bridge/A914 (A914) - 0.3 km from start",
-        "6. Keep straight on at South Road/A914 (A914) - 1.1 km from start",
-        "7. Follow South Road/A914 toward Edinburgh (A914) - 1.4 km from start",
-        "8. At the roundabout take the first exit onto A92 toward Edinburgh (A92) - 14.0 km from start",
-        "9. At the roundabout take the second exit onto A92 (A92) - 17.5 km from start",
-        "10. At the roundabout take the third exit onto A92 toward Edinburgh (A92) - 18.5 km from start",
-        "11. Take the exit onto A92 (A92) - 18.6 km from start",
-        "12. At the roundabout take the third exit onto A92 toward Kirkcaldy (A92) - 20.3 km from start",
-        "13. Take the exit onto A92 (A92) - 20.4 km from start",
-        "14. At the roundabout take the second exit onto A92 toward Kirkcaldy West (A92) - 24.7 km from start",
-        "15. Follow A92 toward Edinburgh (A92) - 25.1 km from start",
-        "16. Keep right at M90/E15 (M90, E15) - 43.1 km from start",
-        "17. Take the M90/E15 motorway (M90, E15) - 43.2 km from start",
-        "18. Follow M90/E15 toward Edinburgh (M90, E15) - 43.7 km from start",
-        "19. Take exit 1 onto A90 (A90) - 56.3 km from start",
-        "20. Turn right onto Maybury Road/A902 (A902) - 62.1 km from start",
-        "21. At the roundabout take the second exit onto Maybury Road/A902 (A902) - 63.4 km from start",
-        "22. Keep right at Maybury Road/A902 (A902) - 64.4 km from start",
-        "23. Bear left at Maybury Road/A902 (A902) - 64.4 km from start",
-        "24. Turn right onto Glasgow Road/A8 (A8) - 64.5 km from start",
-        "25. Bear left at The City Of Edinburgh Bypass/A720 toward City Bypass (A720) - 64.8 km from start",
-        "26. Keep right at The City Of Edinburgh Bypass/A720 toward City Bypass (A720) - 64.8 km from start",
-        "27. At the roundabout take the second exit onto The City Of Edinburgh Bypass/A720 toward City Bypass (A720) - 65.0 km from start",
-        "28. Follow The City Of Edinburgh Bypass/A720 toward Edinburgh South & East (A720) - 65.3 km from start",
-        "29. At the roundabout take the third exit onto The City Of Edinburgh Bypass/A720/E15 toward Edinburgh East & North (A720, E15) - 82.2 km from start",
+       
+        " Steps 1-29 renoved for privacy",
+        
         "30. Take the exit onto The City Of Edinburgh Bypass/A68 toward Jedburgh (A68) - 84.2 km from start",
         "31. At the roundabout take the second exit onto The City Of Edinburgh Bypass/A68 toward Jedburgh (A68) - 84.5 km from start",
         "32. At the roundabout take the first exit onto A68 toward Jedburgh (A68) - 84.7 km from start",
@@ -136,8 +110,8 @@
     },
     "=== GPS COORDINATES ===": {
         "Start Location (Your Home)": {
-            "Latitude": 56.32091,
-            "Longitude": -3.010056
+            "Latitude": 56.00000,
+            "Longitude": -3.000000
         },
         "Destination (Stadium)": {
             "Latitude": 51.8939,
