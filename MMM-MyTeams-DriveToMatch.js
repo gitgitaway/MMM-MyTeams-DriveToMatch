@@ -14,9 +14,9 @@ Module.register("MMM-MyTeams-DriveToMatch", {
     defaults: {
         // Required settings
         apiTomTomKey: "", // Your TomTom API key
-        homeLatitude: 54.8676, // Your home latitude - eg Cairnryan
-        homeLongitude: -4.6399, // Your home longitude - - eg Cairnryan
-        
+        homeLatitude: 54.8676, // Your home latitude - eg default Cairnryan
+        homeLongitude: -4.6399, // Your home longitude - - eg default Cairnryan
+
         // Team settings
         teamName: "Celtic", // Team name to search for
         teamId: "133647", // TheSportsDB team ID (Celtic FC) - will auto-resolve to 133647 if lect blank
@@ -33,7 +33,7 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         // Shared cache settings
         useSharedFixturesCache: false, // If true, copy fixtures from MMM-MyTeams-Fixtures cache
         
-        // Update intervals
+        // Stadium database update settings        // Update intervals
         fixtureUpdateInterval: 24 * 60 * 60 * 1000, // 1 day for fixtures
         routeUpdateInterval: 10 * 60 * 1000, // 10 minutes for routes (reduced from 5 to prevent conflicts)
         
@@ -64,6 +64,10 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         apiPriority: ["thesportsdb", "espn", "bbcsport"], // API priority order for fallback
         mergeFixtures: false, // Merge fixtures from all sources (true) or use first successful (false)
         
+        // Official website fallback settings (for clubs not covered by standard APIs)
+        useOfficialWebsiteFallback: false, // Enable fallback to official club website for fixtures
+        officialWebsiteFixtureUrl: "", // URL of official club fixture page (e.g., "https://www.celticfc.com/fixtures/")
+        
         // Stadium database update settings
         enableStadiumUpdateNotification: true, // Show notification button to trigger stadium updates
         
@@ -71,7 +75,41 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         darkMode: null,              // null=auto, true=force dark, false=force light
         fontColorOverride: null,     // e.g., "#FFFFFF" to force white text
         borderColorOverride: null,   // e.g., "#FFFFFF" to force white borders
-        opacityOverride: null        // e.g., 1.0 to force full opacity
+        opacityOverride: null,       // e.g., 1.0 to force full opacity
+
+        // ===== NEUTRAL VENUE OVERRIDE =====
+        neutralVenueOverrides: {
+            enabled: false,
+            matches: [
+        // Venue in CSV - just use name (coordinates auto-resolved from football_stadiums.csv)
+        // { date: "2025-11-02", opponent: "Rangers", venue: "Hampden Park" },
+
+        // Venue NOT in CSV - provide hardcoded coordinates
+        
+        // Scottish neutral venue example
+        /*     { date: "2025-12-02", 
+            opponent: "Hearts", 
+            venue: "Murrayfield Stadium",
+            latitude: 55.9415,
+            longitude: -3.2388,
+            team: "Edinburgh Rugby",
+            postCode: "EH14 8XZ"
+            },
+        */
+      
+        // European neutral venue example
+       /*     {
+            date: "2025-05-15",
+            opponent: "Feyenoord",
+            venue: "De Kuip",
+            latitude: 51.8808,
+            longitude: 4.2793,
+            team: "Feyenoord",
+            postCode: "3077 GC"
+            },
+         */
+        ]
+      }
     },
 
     // Required version
@@ -184,7 +222,12 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                 debug: this.config.debug,
                 apiPriority: this.config.apiPriority,
                 mergeFixtures: this.config.mergeFixtures,
-                requestTimeout: this.config.requestTimeout
+                requestTimeout: this.config.requestTimeout,
+                // Official website fallback settings
+                useOfficialWebsiteFallback: this.config.useOfficialWebsiteFallback,
+                officialWebsiteFixtureUrl: this.config.officialWebsiteFixtureUrl,
+                // Neutral venue overrides (TIER 0 - highest priority)
+                neutralVenueOverrides: this.config.neutralVenueOverrides
             });
         } else {
             // Use standard TheSportsDB API
@@ -204,7 +247,12 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                 strictLeagueFiltering: this.config.strictLeagueFiltering,
                 requestTimeout: this.config.requestTimeout,
                 // Shared cache option
-                useSharedFixturesCache: this.config.useSharedFixturesCache
+                useSharedFixturesCache: this.config.useSharedFixturesCache,
+                // Official website fallback settings
+                useOfficialWebsiteFallback: this.config.useOfficialWebsiteFallback,
+                officialWebsiteFixtureUrl: this.config.officialWebsiteFixtureUrl,
+                // Neutral venue overrides (TIER 0 - highest priority)
+                neutralVenueOverrides: this.config.neutralVenueOverrides
             });
         }
     },

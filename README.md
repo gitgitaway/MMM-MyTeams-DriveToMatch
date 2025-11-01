@@ -4,6 +4,17 @@
 
 Automatic fixture detection with real-time traffic routes to match venues using [TomTom API](https://developer.tomtom.com/user/me/apps) , [TheSportsDB](https://www.thesportsdb.com/) & [FootballWebPages](https://www.footballwebpages.co.uk/). Supports all football teams and leagues (domestic and European competitions).
 
+## 🎬 Screenshots
+
+*Examples show away fixture routes (also calculates home stadium routes)*
+
+| Route | Description |
+|-------|-------------|
+| ![Route 1](./screenshots/screenshotRoute1.png) | Arsenal v Bayern Munich |
+| ![Route 2](./screenshots/screenshotRoute2.png) | Eintracht Frankfurt v Liverpool |
+| ![Route 3](./screenshots/screenshotRoute3.png) | Feyenoord v Celtic |
+| ![Route 4](./screenshots/screenshotRoute4.png) | Roma v Inter Milan |
+
 ## ✨ Features
 
 - 🎯 **Automatic Fixture Detection** - Shows your next match
@@ -21,26 +32,34 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 
 ## 📚 Documentation
 
+### Essential Guides
+
 | Document | Purpose |
 |----------|---------|
-| **[CONFIGURATION.md](usefull_Info/CONFIGURATION.md)** | All configuration options with examples |
-| **[ROUTES.md](usefull_Info/ROUTES.md)** | Saving routes with turn-by-turn directions |
-| **[WAYPOINTS.md](usefull_Info/WAYPOINTS.md)** | Bridge detection, ferries, and waypoints |
-| **[DATABASE.md](usefull_Info/DATABASE.md)** | Managing stadium database and adding teams |
-| **[REQUEST-MANAGER.md](usefull_Info/REQUEST-MANAGER.md)** | Shared request manager for multi-module setup |
-| **[TROUBLESHOOTING.md](usefull_Info/TROUBLESHOOTING.md)** | Common issues and solutions |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history and changes |
+| **[CONFIGURATION.md](documentation/CONFIGURATION.md)** | ⚙️ All configuration options with examples (minimum + full setup) |
+| **[HOW_ IT_WORKS.md](documentation/HOW_IT_WORKS.md)** | ⚙️ Overview of how the module works |
+| **[API_PRIORITY_GUIDE.md](documentation/API_PRIORITY_GUIDE.md)** | 🔄 Complete fixture lookup system with ASCII flowchart + 4 scenarios |
+| **[OFFICIAL_WEBSITE_FALLBACK_GUIDE.md](documentation/OFFICIAL_WEBSITE_FALLBACK_GUIDE.md)** | 🌐 How to enable fallback for non-major league teams |
+| **[STADIUM_UPDATE_NOTIFICATION_GUIDE.md](documentation/STADIUM_UPDATE_NOTIFICATION_GUIDE.md)** | 📲 Stadium database update system explanation |
 
-## 🎬 Screenshots
+### Feature Guides
 
-*Examples show away fixture routes (also calculates home stadium routes)*
+| Document | Purpose |
+|----------|---------|
+| **[ROUTES.md](documentation/ROUTES.md)** | 📍 Saving routes with turn-by-turn directions |
+| **[WAYPOINTS.md](documentation/WAYPOINTS.md)** | 🌉 Bridge detection, ferries, and waypoints |
+| **[NEUTRAL_VENUE_QUICK_START.md](documentation/NEUTRAL_VENUE_QUICK_START.md)** | ⚽ Setting up neutral venue overrides for cup finals |
 
-| Route | Description |
-|-------|-------------|
-| ![Route 1](./screenshots/screenshotRoute1.png) | Arsenal v Bayern Munich |
-| ![Route 2](./screenshots/screenshotRoute2.png) | Eintracht Frankfurt v Liverpool |
-| ![Route 3](./screenshots/screenshotRoute3.png) | Feyenoord v Celtic |
-| ![Route 4](./screenshots/screenshotRoute4.png) | Roma v Inter Milan |
+### Reference & Support
+
+| Document | Purpose |
+|----------|---------|
+| **[DATABASE.md](documentation/DATABASE.md)** | 🏟️ Managing stadium database and adding teams |
+| **[SHARED_REQUEST_MANAGER.md](documentation/SHARED_REQUEST_MANAGER.md)** | 📡 Shared request manager for multi-module setup |
+| **[TROUBLESHOOTING.md](documentation/TROUBLESHOOTING.md)** | 🐛 Common issues and solutions |
+| **[CHANGELOG.md](CHANGELOG.md)** | 📝 Version history and changes |
+
+
 
 ## 🚀 Quick Start
 
@@ -65,17 +84,17 @@ npm install
 
 ### 3. Minimal Configuration
 
-Add to `config/config.js`:
+Add to `config/config.js` - **Only 4 required settings!**
 
 ```javascript
 {
     module: "MMM-MyTeams-DriveToMatch",
     position: "top_right",
     config: {
-        apiTomTomKey: "YOUR_TOMTOM_API_KEY",
-        homeLatitude: 57.35066,        // Your home latitude
-        homeLongitude: -3.59404,       // Your home longitude
-        teamName: "Celtic"             // Your team name
+        apiTomTomKey: "YOUR_TOMTOM_API_KEY",    // Get from https://developer.tomtom.com
+        homeLatitude: 57.35066,                 // Your home latitude
+        homeLongitude: -3.59404,                // Your home longitude
+        teamName: "Celtic"                      // Your team name
     }
 }
 ```
@@ -85,37 +104,230 @@ Add to `config/config.js`:
 - Right-click your home location
 - Use the latitude/longitude shown
 
-### 4. Restart MagicMirror
+---
+
+### 4. Full Configuration (All Features)
+
+For advanced features and customization:
+
+```javascript
+{
+    module: "MMM-MyTeams-DriveToMatch",
+    position: "top_right",
+    config: {
+        // ===== REQUIRED =====
+        apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+        homeLatitude: 57.35066,
+        homeLongitude: -3.59404,
+        
+        // ===== TEAM =====
+        teamName: "Celtic",
+        teamId: "133647",  // TheSportsDB ID (auto-resolved if blank)
+        
+        // ===== FIXTURES & DATA =====
+        season: "auto",                                    // Auto-detect current season
+        fallbackSeason: "2025-2026",                      // Fallback if auto-detection fails
+        leagueIds: ["4330", "4364", "4363", "4888"],    // Scottish leagues
+        uefaLeagueIds: ["4480", "4481", "5071"],         // UEFA competitions
+        useSearchEventsFallback: true,                    // Fallback to search events
+        strictLeagueFiltering: true,                      // Filter by league IDs
+        useSharedFixturesCache: false,                    // Share cache with other MMM-MyTeams modules
+        
+        // ===== MULTI-API (Advanced) =====
+        useMultiAPIProvider: false,                       // Enable ESPN/BBC Sport fallback
+        apiPriority: ["thesportsdb", "espn", "bbcsport"], // API priority order
+        mergeFixtures: false,                             // Merge from all sources
+        
+        // ===== OFFICIAL WEBSITE FALLBACK =====
+        useOfficialWebsiteFallback: false,               // For non-major league teams
+        officialWebsiteFixtureUrl: "",                    // Club fixture URL
+        
+        // ===== UPDATE INTERVALS =====
+        fixtureUpdateInterval: 24 * 60 * 60 * 1000,      // 24 hours
+        routeUpdateInterval: 10 * 60 * 1000,             // 10 minutes
+        
+        // ===== DISPLAY =====
+        showDelay: true,                                  // Show traffic delays
+        showWaypoints: true,                              // Show bridges, ferries
+        maxRoutes: 2,                                     // 1 (fastest) or 2 (fastest + shortest)
+        units: "imperial",                                // "imperial" (miles) or "metric" (km)
+        
+        // ===== ROUTE FEATURES =====
+        showEurotunnel: true,                            // Detect Eurotunnel
+        showFerryDetails: true,                          // Show ferry info
+        avoidTolls: false,                               // Avoid tolls
+        
+        // ===== FUEL COST =====
+        showFuelCost: true,                              // Calculate fuel cost
+        fuelEfficiency: 8.0,                             // L/100km (8.0 ≈ 35 MPG)
+        fuelPricePerLitre: 1.45,                         // £1.45 GBP
+        
+        // ===== API SETTINGS =====
+        requestTimeout: 20000,                           // 20 second timeout
+        maxRetries: 3,                                   // Retry 3 times
+        
+        // ===== DEBUG & TESTING =====
+        debug: false,                                     // Console logging
+        dateOverride: null,                              // Test: "2025-11-27"
+        
+        // ===== STADIUM UPDATES =====
+        enableStadiumUpdateNotification: true,           // Show update button
+        
+        // ===== THEME =====
+        darkMode: null,                                  // null=auto, true=dark, false=light
+        fontColorOverride: null,                         // "#FFFFFF", "#00FF41"
+        borderColorOverride: null,                       // "#FFD700"
+        opacityOverride: null,                           // 0.8 (0.0-1.0)
+        
+        // ===== NEUTRAL VENUES =====
+        neutralVenueOverrides: {
+            enabled: false,
+            matches: [
+                // { date: "2025-11-02", opponent: "Rangers", venue: "Hampden Park" }
+            ]
+        }
+    }
+}
+```
+
+---
+
+### 5. Restart MagicMirror
 
 ```bash
 # Full restart recommended
 pm2 restart MagicMirror
 ```
 
-## ⚙️ Configuration
+---
 
-See **[CONFIGURATION.md](CONFIGURATION.md)** for complete option reference.
+## ⚙️ Complete Configuration Reference
 
-**Quick Examples:**
+See **[CONFIGURATION.md](documentation/CONFIGURATION.md)** for:
+- Detailed explanation of every option
+- All possible values and defaults
+- Real-world examples for different scenarios
+- How to find league IDs for your team
+- Troubleshooting configuration issues
+
+---
+
+## 🔧 Configuration Examples
+
+### Example 1: Basic Scottish Team
 
 ```javascript
-// Test European fixture by date
 config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic"
+}
+```
+
+### Example 2: Non-Major League Team (with Official Website Fallback)
+
+```javascript
+config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "My Local Team",
+    
+    // Enable website scraping for non-major teams
+    useOfficialWebsiteFallback: true,
+    officialWebsiteFixtureUrl: "https://www.mylocalteam.com/fixtures/",
+    
+    // See OFFICIAL_WEBSITE_FALLBACK_GUIDE.md
+}
+```
+
+### Example 3: Multi-League Support (with Multiple APIs)
+
+```javascript
+config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic",
+    
+    // Fetch from multiple sources
+    useMultiAPIProvider: true,
+    apiPriority: ["thesportsdb", "espn", "bbcsport"],
+    mergeFixtures: true,  // Combine all sources
+    
+    // See API_PRIORITY_GUIDE.md
+}
+```
+
+### Example 4: Testing Specific Fixture
+
+```javascript
+config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic",
+    
+    // Test European fixture
     dateOverride: "2025-11-27",  // Feyenoord vs Celtic
-    debug: true
+    debug: true  // See console logs
 }
+```
 
-// Performance tuning
+### Example 5: Performance Tuning
+
+```javascript
 config: {
-    fixturesCacheTTL: 60 * 60 * 1000,  // 1 hour cache
-    routeUpdateInterval: 30 * 60 * 1000  // 30 min updates
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic",
+    
+    // Optimize for performance
+    fixtureUpdateInterval: 24 * 60 * 60 * 1000,  // Check once per day
+    routeUpdateInterval: 30 * 60 * 1000,         // Update routes every 30 min
+    strictLeagueFiltering: true,                 // Reduce API payload
 }
+```
 
-// Custom styling
+### Example 6: Custom Styling
+
+```javascript
 config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic",
+    
+    // Team colors
     darkMode: true,
-    fontColorOverride: "#00FF41",   // Green text
-    borderColorOverride: "#FFD700"  // Gold borders
+    fontColorOverride: "#00FF41",       // Green text
+    borderColorOverride: "#FFD700",     // Gold borders
+    opacityOverride: 0.95
+}
+```
+
+### Example 7: Neutral Venue (Cup Final)
+
+```javascript
+config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic",
+    
+    // Override specific matches
+    neutralVenueOverrides: {
+        enabled: true,
+        matches: [
+            {
+                date: "2025-11-02",
+                opponent: "Rangers",
+                venue: "Hampden Park"  // Auto-resolves coordinates
+            }
+        ]
+    }
 }
 ```
 
@@ -141,7 +353,7 @@ Saved files include:
 - GPS coordinates
 - Traffic information
 
-See **[ROUTES.md](ROUTES.md)** for complete guide.
+See **[ROUTES.md](documentation/ROUTES.md)** for complete guide.
 
 ## 🌉 Waypoints & Bridges
 
@@ -153,7 +365,7 @@ Module automatically detects:
 
 GPS-based detection works even if TomTom doesn't mention bridges.
 
-See **[WAYPOINTS.md](WAYPOINTS.md)** for details.
+See **[WAYPOINTS.md](documentation/WAYPOINTS.md)** for details.
 
 ## 🔄 Multi-Module Setup
 
@@ -166,7 +378,7 @@ cp shared-request-manager.js ../MMM-MyTeams-LeagueTable/
 cp shared-request-manager.js ../MMM-MyTeams-Honours/
 ```
 
-This prevents rate limiting and timeouts. See **[REQUEST-MANAGER.md](REQUEST-MANAGER.md)** for details.
+This prevents rate limiting and timeouts. See **[REQUEST-MANAGER.md](documentation/SHARED_REQUEST_MANAGER.md)** for details.
 
 ## 💾 Caching System
 
@@ -201,7 +413,7 @@ Common issues quick reference:
 | Bridges not showing | Enable `debug: true`, check route passes close to bridges |
 | Cache issues | Delete cache files and restart MagicMirror |
 
-For detailed troubleshooting, see **[TROUBLESHOOTING.md](usefull_Info/TROUBLESHOOTING.md)**.
+For detailed troubleshooting, see **[TROUBLESHOOTING.md](documentation/TROUBLESHOOTING.md)**.
 
 Enable debug mode in config:
 ```javascript
@@ -219,12 +431,13 @@ See caching configuration to optimize API usage.
 
 ## 📋 Version Information
 
-| Version | Status | Date |
-|---------|--------|------|
-| v1.4.3 | Latest | 2025-01-15 |
-| v1.4.2 | Stable | 2025-10-10 |
-| v1.4.1 | Archive | 2025-01-XX |
-| v1.4.0 | Archive | 2025-01-XX |
+| Version | Status | Date | Notable Changes |
+|---------|--------|------|-----------------|
+| v1.5.0 | Current | 2025-11-XX | 🐛 Critical bug fix: Neutral venue coordinate lookup |
+| v1.4.3 | Archive | 2025-10-19 | Stadium database expansion (500+ teams) |
+| v1.4.2 | Archive | 2025-10-10 | Bridge detection expansion (110+ bridges) |
+| v1.4.1 | Archive | 2025-10-07 | Documentation & screenshot fixes |
+| v1.4.0 | Archive | 2025-10-05 | Route saving & turn-by-turn directions |
 
 See **[CHANGELOG.md](CHANGELOG.md)** for complete version history.
 
@@ -237,7 +450,7 @@ See **[CHANGELOG.md](CHANGELOG.md)** for complete version history.
 
 ## 📝 Notes
 
-This is the 6th module in a Celtic-themed MagicMirror setup. Other modules:
+This is the 6th module in a Celtic-themed MagicMirror setup. All are customisable for other teams. Other modules:
 - ![Screenshot 5](./screenshots/CelticMM-Screenshot.png)
 
 - [MMM-MyTeams-Clock](https://github.com/gitgitaway/MMM-MyTeams-Clock)

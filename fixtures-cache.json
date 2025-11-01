@@ -1,0 +1,21 @@
+{
+  "ts": 1761955251069,
+  "ttl": 1800000,
+  "source": "shared-cache",
+  "key": "Celtic_134647_next",
+  "data": {
+    "date": "2025-11-02T14:00",
+    "opponent": "Rangers",
+    "isHome": true,
+    "venue": {
+      "stadiumName": "Celtic Park",
+      "latitude": 55.8642,
+      "longitude": -4.2518,
+      "team": "Celtic",
+      "postCode": "G40 3RE"
+    },
+    "competition": "Scottish League Cup",
+    "homeTeam": "Celtic",
+    "awayTeam": "Rangers"
+  }
+}

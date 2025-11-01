@@ -1,0 +1,298 @@
+{
+  "ts": 1762033579822,
+  "ttl": 300000,
+  "source": "api+fwp",
+  "key": "api|134647||4332,4481,5071|strict|searchOn",
+  "data": [
+    {
+      "date": "2025-11-02",
+      "dateText": "2025-11-02",
+      "timeText": "14:00",
+      "opponent": "Rangers",
+      "homeAway": "H",
+      "competition": "Scottish League Cup",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-11-06",
+      "dateText": "Thu 6 Nov",
+      "timeText": "17:45",
+      "opponent": "FC Midtjylland",
+      "homeAway": "A",
+      "competition": "Europa League MD4",
+      "competitionType": "european",
+      "tv": ""
+    },
+    {
+      "date": "2025-11-09",
+      "dateText": "2025-11-09",
+      "timeText": "16:00",
+      "opponent": "Kilmarnock",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-11-22",
+      "dateText": "Sat 22 Nov",
+      "timeText": "20:00",
+      "opponent": "St Mirren",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-11-27",
+      "dateText": "Thu 27 Nov",
+      "timeText": "17:45",
+      "opponent": "Feyenoord",
+      "homeAway": "A",
+      "competition": "Europa League MD5",
+      "competitionType": "european",
+      "tv": ""
+    },
+    {
+      "date": "2025-11-30",
+      "dateText": "Sun 30 Nov",
+      "timeText": "12:00",
+      "opponent": "Hibernian",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-03",
+      "dateText": "2025-12-03",
+      "timeText": "19:45",
+      "opponent": "Dundee",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-07",
+      "dateText": "2025-12-07",
+      "timeText": "15:00",
+      "opponent": "Heart of Midlothian",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-11",
+      "dateText": "2025-12-11",
+      "timeText": "20:00",
+      "opponent": "Roma",
+      "homeAway": "H",
+      "competition": "UEFA Europa League",
+      "competitionType": "european",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-14",
+      "dateText": "Sun 14 Dec",
+      "timeText": "15:00",
+      "opponent": "Falkirk",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-17",
+      "dateText": "Wed 17 Dec",
+      "timeText": "20:00",
+      "opponent": "Dundee United",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-21",
+      "dateText": "2025-12-21",
+      "timeText": "15:00",
+      "opponent": "Aberdeen",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-27",
+      "dateText": "Sat 27 Dec",
+      "timeText": "15:00",
+      "opponent": "Livingston",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-30",
+      "dateText": "Tue 30 Dec",
+      "timeText": "20:00",
+      "opponent": "Motherwell",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-01-03",
+      "dateText": "2026-01-03",
+      "timeText": "12:30",
+      "opponent": "Rangers",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-01-10",
+      "dateText": "2026-01-10",
+      "timeText": "15:00",
+      "opponent": "Dundee United",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-01-22",
+      "dateText": "Thu 22 Jan",
+      "timeText": "17:45",
+      "opponent": "Bologna",
+      "homeAway": "A",
+      "competition": "Europa League MD7",
+      "competitionType": "european",
+      "tv": ""
+    },
+    {
+      "date": "2026-01-25",
+      "dateText": "Sun 25 Jan",
+      "timeText": "15:00",
+      "opponent": "Heart of Midlothian",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-01-29",
+      "dateText": "2026-01-29",
+      "timeText": "20:00",
+      "opponent": "Utrecht",
+      "homeAway": "H",
+      "competition": "UEFA Europa League",
+      "competitionType": "european",
+      "tv": ""
+    },
+    {
+      "date": "2026-02-01",
+      "dateText": "2026-02-01",
+      "timeText": "15:00",
+      "opponent": "Falkirk",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-02-04",
+      "dateText": "Wed 4 Feb",
+      "timeText": "19:45",
+      "opponent": "Aberdeen",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-02-11",
+      "dateText": "2026-02-11",
+      "timeText": "19:45",
+      "opponent": "Livingston",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-02-14",
+      "dateText": "Sat 14 Feb",
+      "timeText": "15:00",
+      "opponent": "Kilmarnock",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-02-21",
+      "dateText": "2026-02-21",
+      "timeText": "15:00",
+      "opponent": "Hibernian",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-02-28",
+      "dateText": "Sat 28 Feb",
+      "timeText": "15:00",
+      "opponent": "Rangers",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-03-14",
+      "dateText": "2026-03-14",
+      "timeText": "15:00",
+      "opponent": "Motherwell",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-03-21",
+      "dateText": "Sat 21 Mar",
+      "timeText": "15:00",
+      "opponent": "Dundee United",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-04-04",
+      "dateText": "Sat 4 Apr",
+      "timeText": "15:00",
+      "opponent": "Dundee",
+      "homeAway": "A",
+      "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2026-04-11",
+      "dateText": "2026-04-11",
+      "timeText": "14:00",
+      "opponent": "St Mirren",
+      "homeAway": "H",
+      "competition": "Scottish Premier League",
+      "competitionType": "domestic",
+      "tv": ""
+    }
+  ]
+}

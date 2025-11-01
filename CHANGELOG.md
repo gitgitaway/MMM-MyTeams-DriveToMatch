@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [WIP - Unreleased]
+## [[1.5.03] - 2025-11-01 Curent]
+
+### 🐛 Critical Bug Fix: Neutral Venue Coordinate Lookup
+
+- **Fixed**: Neutral venue coordinates lookup bug where partial name matching was incorrectly returning data from unrelated stadiums
+  - **Issue**: When venue name (e.g., "Murrayfield Stadium") couldn't find exact match in neutral venues map, it would fall through to CSV partial matching and return wrong coordinates (e.g., 40.5992, 19.7339 from Albanian "Bylis Ballsh")
+  - **Root Cause**: Neutral venues map stored entries with short keys (e.g., "murrayfield"), but lookups were using full venue names ("Murrayfield Stadium")
+  - **Solution**: Implemented fallback partial word-matching that splits venue names into search words and checks for key matches before falling through to CSV lookups
+  - **Action Required**: Users should clear cache files after updating (`stadium-cache.json`, `fixtures-cache.json`) to ensure correct coordinates are used
+- **Enhanced**: Debug logging in neutral venue resolution to better track whether venues came from hardcoded neutral venues vs CSV database
+- **Files Modified**: `node_helper.js` (lines 1706-1719, 1469-1482)
 
 ### 🚀 Performance & Troubleshooting Enhancements
 
