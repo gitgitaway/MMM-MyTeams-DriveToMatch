@@ -13,8 +13,9 @@
     "TomTom",
     "fixtures",
     "European football",
-    "driving routes"
-    
+    "driving routes",
+    "MyTeams",
+    "Celtic FC"
   ],
   "author": "gitgitaway",
   "license": "MIT",
@@ -31,3 +32,4 @@
   },
   "homepage": "https://github.com/gitgitaway/MMM-MyTeams-DriveToMatch#readme"
 }
+
