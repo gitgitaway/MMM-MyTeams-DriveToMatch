@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [[1.5.04] - 2025-11-03 Curent]
+
+### 🐛 Critical Bug Fix: Cannot read properties of null (reading 'toLowerCase') 
+
+- **Fixed**: Cannot read properties of null (reading 'toLowerCase') at line 1718
+  - **Issue**: Moduled failed to load
+  - **Root Cause**: The getVenueCoordinates() function was calling .toLowerCase() on venueName without checking if it was null. When called from line 1399 with venueName = null, this caused an immediate crash.
+  - **Solution**: Added a null check at line 1719:
+  - **Action Required**: Users should clear cache files after updating (`stadium-cache.json`, `fixtures-cache.json`) to ensure correct coordinates are used
+  - **Files Modified**: `node_helper.js` (lines 1719, 1390, 1342
+
+---
+
 ## [[1.5.03] - 2025-11-01 Curent]
 
 ### 🐛 Critical Bug Fix: Neutral Venue Coordinate Lookup
@@ -168,5 +181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | Stadium Database (500+ teams) | 1.3.0 - 1.4.3 | ✅  Archived   |
 | Adaptive Cache TTL | 1.4.3  |  ✅  Archived   |
 | Critical bug fix for neturak venue issues | 1.5.0  | ✅ Active |
+
 
 
