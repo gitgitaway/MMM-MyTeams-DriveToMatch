@@ -1385,6 +1385,14 @@ module.exports = NodeHelper.create({
                 // Use Hampden Park coordinates for cup semi-finals and finals
                 // Call getVenueCoordinates with "Hampden Park" as venueName so it checks neutral venues first (PRIORITY 0)
                 venue = await this.getVenueCoordinates("Hampden Park", "Hampden Park");
+                
+                // Safety check: ensure Hampden Park venue data was retrieved successfully
+                if (!venue) {
+                    console.error(`MMM-MyTeams-DriveToMatch: Failed to retrieve Hampden Park venue coordinates for ${competition} fixture`);
+                    // Return null so the fixture can be skipped or handled gracefully
+                    return null;
+                }
+                
                 if (config.debug) {
                     console.log(`MMM-MyTeams-DriveToMatch: Using Hampden Park for ${competition} fixture vs ${opponent}`);
                 }
@@ -1397,6 +1405,14 @@ module.exports = NodeHelper.create({
                     console.log(`MMM-MyTeams-DriveToMatch: Looking up venue for team: ${venueTeam} (isHome: ${isHome}, so venue should be ${isHome ? config.teamName + "'s ground" : opponent + "'s ground"})`);
                 }
                 venue = await this.getVenueCoordinates(venueTeam, null);
+                
+                // Safety check: ensure venue object is valid before accessing properties
+                if (!venue) {
+                    console.error(`MMM-MyTeams-DriveToMatch: Failed to retrieve venue data for team: ${venueTeam}`);
+                    // Return null so the fixture can be skipped or handled gracefully
+                    return null;
+                }
+                
                 if (config.debug) {
                     console.log(`MMM-MyTeams-DriveToMatch: Venue resolved:`, {
                         name: venue.name,
@@ -1715,32 +1731,35 @@ module.exports = NodeHelper.create({
 
             // PRIORITY 0: Check neutral venues first (e.g., Hampden Park, Murrayfield)
             // These are ALWAYS available and have highest priority
-            const neutralKey = venueName.toLowerCase();
-            venue = this.neutralVenues.get(neutralKey);
-            
-            // If not found by exact key, try partial matching (e.g., "Murrayfield Stadium" → "murrayfield")
-            if (!venue) {
-                const searchWords = neutralKey.split(/\s+/);
-                for (const [key, value] of this.neutralVenues.entries()) {
-                    // Check if any search word matches the key
-                    if (searchWords.some(word => key.includes(word) || word.includes(key))) {
-                        venue = value;
-                        break;
+            // Only check if venueName is provided (not null)
+            if (venueName) {
+                const neutralKey = venueName.toLowerCase();
+                venue = this.neutralVenues.get(neutralKey);
+                
+                // If not found by exact key, try partial matching (e.g., "Murrayfield Stadium" → "murrayfield")
+                if (!venue) {
+                    const searchWords = neutralKey.split(/\s+/);
+                    for (const [key, value] of this.neutralVenues.entries()) {
+                        // Check if any search word matches the key
+                        if (searchWords.some(word => key.includes(word) || word.includes(key))) {
+                            venue = value;
+                            break;
+                        }
                     }
                 }
-            }
-            
-            if (venue) {
-                const result = {
-                    stadiumName: venueName || venue.name,
-                    name: venueName || venue.name,
-                    latitude: venue.latitude,
-                    longitude: venue.longitude,
-                    team: venue.team,
-                    postCode: venue.postCode || null
-                };
-                this.venueCache.set(cacheKey, result);
-                return result;
+                
+                if (venue) {
+                    const result = {
+                        stadiumName: venueName || venue.name,
+                        name: venueName || venue.name,
+                        latitude: venue.latitude,
+                        longitude: venue.longitude,
+                        team: venue.team,
+                        postCode: venue.postCode || null
+                    };
+                    this.venueCache.set(cacheKey, result);
+                    return result;
+                }
             }
 
             // First, try exact team name match in scottishGrounds
