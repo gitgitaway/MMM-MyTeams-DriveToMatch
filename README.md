@@ -15,6 +15,7 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 | ![Route 2](./screenshots/screenshotRoute2.png) | Eintracht Frankfurt v Liverpool |
 | ![Route 3](./screenshots/screenshotRoute3.png) | Feyenoord v Celtic |
 | ![Route 4](./screenshots/screenshotRoute4.png) | Roma v Inter Milan |
+| ![Route 5](./screenshots/screenshot-PCA-Icons1.png) | Parking, Charging & Airport Icons |
 
 ## ✨ Features
 
