@@ -1,39 +1,9 @@
 {
-  "ts": 1762033579822,
+  "ts": 1762815068636,
   "ttl": 300000,
   "source": "api+fwp",
   "key": "api|134647||4332,4481,5071|strict|searchOn",
   "data": [
-    {
-      "date": "2025-11-02",
-      "dateText": "2025-11-02",
-      "timeText": "14:00",
-      "opponent": "Rangers",
-      "homeAway": "H",
-      "competition": "Scottish League Cup",
-      "competitionType": "domestic",
-      "tv": ""
-    },
-    {
-      "date": "2025-11-06",
-      "dateText": "Thu 6 Nov",
-      "timeText": "17:45",
-      "opponent": "FC Midtjylland",
-      "homeAway": "A",
-      "competition": "Europa League MD4",
-      "competitionType": "european",
-      "tv": ""
-    },
-    {
-      "date": "2025-11-09",
-      "dateText": "2025-11-09",
-      "timeText": "16:00",
-      "opponent": "Kilmarnock",
-      "homeAway": "H",
-      "competition": "Scottish Premier League",
-      "competitionType": "domestic",
-      "tv": ""
-    },
     {
       "date": "2025-11-22",
       "dateText": "Sat 22 Nov",
@@ -101,6 +71,16 @@
       "opponent": "Falkirk",
       "homeAway": "A",
       "competition": "Scottish Premiership",
+      "competitionType": "domestic",
+      "tv": ""
+    },
+    {
+      "date": "2025-12-14",
+      "dateText": "Sun 14 Dec",
+      "timeText": "15:30",
+      "opponent": "St Mirren",
+      "homeAway": "A",
+      "competition": "Viaplay Cup F",
       "competitionType": "domestic",
       "tv": ""
     },

@@ -834,7 +834,7 @@ module.exports = NodeHelper.create({
         console.log("Starting node helper for: MMM-MyTeams-DriveToMatch");
         this.loadNeutralVenues();  // Load neutral venues first (highest priority)
         this.loadScottishGrounds();
-        loadCacheFromDisk();
+        loadCacheFromDisk(false);
         
         // Start queue processor (legacy - now using SharedRequestManager)
         this.startQueueProcessor();
@@ -879,6 +879,12 @@ module.exports = NodeHelper.create({
                 await this.getNextFixture(request.config);
             } else if (request.type === "routes") {
                 await this.getRoutes(request.config);
+            } else if (request.type === "airports") {
+                await this.getAirportsInfo(request.config);
+            } else if (request.type === "parking") {
+                await this.getParkingInfo(request.config);
+            } else if (request.type === "charging") {
+                await this.getChargingInfo(request.config);
             }
         } catch (error) {
             console.error("MMM-MyTeams-DriveToMatch: Error processing queued request:", error);
@@ -1063,6 +1069,51 @@ module.exports = NodeHelper.create({
             case "SAVE_ROUTE":
                 // Handle route save request immediately (not queued)
                 this.saveRouteToFile(payload);
+                break;
+            case "GET_AIRPORTS_INFO":
+                // Add to queue for airport info request
+                this.requestQueue.push({
+                    type: "airports",
+                    config: payload,
+                    timestamp: Date.now()
+                });
+                if (payload.debug) {
+                    console.log(`MMM-MyTeams-DriveToMatch: Queued airports request (queue size: ${this.requestQueue.length})`);
+                }
+                break;
+            case "SAVE_AIRPORTS_SHEET":
+                // Handle airports sheet save request immediately
+                this.saveAirportsSheet(payload);
+                break;
+            case "GET_PARKING_INFO":
+                // Add to queue for parking info request
+                this.requestQueue.push({
+                    type: "parking",
+                    config: payload,
+                    timestamp: Date.now()
+                });
+                if (payload.debug) {
+                    console.log(`MMM-MyTeams-DriveToMatch: Queued parking request (queue size: ${this.requestQueue.length})`);
+                }
+                break;
+            case "SAVE_PARKING_SHEET":
+                // Handle parking sheet save request immediately
+                this.saveParkingSheet(payload);
+                break;
+            case "GET_CHARGING_INFO":
+                // Add to queue for charging info request
+                this.requestQueue.push({
+                    type: "charging",
+                    config: payload,
+                    timestamp: Date.now()
+                });
+                if (payload.debug) {
+                    console.log(`MMM-MyTeams-DriveToMatch: Queued charging request (queue size: ${this.requestQueue.length})`);
+                }
+                break;
+            case "SAVE_CHARGING_SHEET":
+                // Handle charging sheet save request immediately
+                this.saveChargingSheet(payload);
                 break;
         }
     },
@@ -1385,14 +1436,6 @@ module.exports = NodeHelper.create({
                 // Use Hampden Park coordinates for cup semi-finals and finals
                 // Call getVenueCoordinates with "Hampden Park" as venueName so it checks neutral venues first (PRIORITY 0)
                 venue = await this.getVenueCoordinates("Hampden Park", "Hampden Park");
-                
-                // Safety check: ensure Hampden Park venue data was retrieved successfully
-                if (!venue) {
-                    console.error(`MMM-MyTeams-DriveToMatch: Failed to retrieve Hampden Park venue coordinates for ${competition} fixture`);
-                    // Return null so the fixture can be skipped or handled gracefully
-                    return null;
-                }
-                
                 if (config.debug) {
                     console.log(`MMM-MyTeams-DriveToMatch: Using Hampden Park for ${competition} fixture vs ${opponent}`);
                 }
@@ -1405,21 +1448,15 @@ module.exports = NodeHelper.create({
                     console.log(`MMM-MyTeams-DriveToMatch: Looking up venue for team: ${venueTeam} (isHome: ${isHome}, so venue should be ${isHome ? config.teamName + "'s ground" : opponent + "'s ground"})`);
                 }
                 venue = await this.getVenueCoordinates(venueTeam, null);
-                
-                // Safety check: ensure venue object is valid before accessing properties
-                if (!venue) {
-                    console.error(`MMM-MyTeams-DriveToMatch: Failed to retrieve venue data for team: ${venueTeam}`);
-                    // Return null so the fixture can be skipped or handled gracefully
-                    return null;
-                }
-                
-                if (config.debug) {
+                if (config.debug && venue) {
                     console.log(`MMM-MyTeams-DriveToMatch: Venue resolved:`, {
                         name: venue.name,
                         latitude: venue.latitude,
                         longitude: venue.longitude,
                         team: venue.team
                     });
+                } else if (!venue) {
+                    console.warn(`MMM-MyTeams-DriveToMatch: Failed to resolve venue for ${venueTeam}`);
                 }
             }
         }
@@ -1438,8 +1475,8 @@ module.exports = NodeHelper.create({
             console.log(`MMM-MyTeams-DriveToMatch: Processed fixture summary:`, {
                 matchup: `${processedFixture.homeTeam} vs ${processedFixture.awayTeam}`,
                 isHome: processedFixture.isHome,
-                venue: processedFixture.venue.name,
-                venueCoords: `${processedFixture.venue.latitude}, ${processedFixture.venue.longitude}`,
+                venue: processedFixture.venue ? processedFixture.venue.name : 'Unknown',
+                venueCoords: processedFixture.venue ? `${processedFixture.venue.latitude}, ${processedFixture.venue.longitude}` : 'Unknown',
                 competition: processedFixture.competition
             });
         }
@@ -1731,7 +1768,6 @@ module.exports = NodeHelper.create({
 
             // PRIORITY 0: Check neutral venues first (e.g., Hampden Park, Murrayfield)
             // These are ALWAYS available and have highest priority
-            // Only check if venueName is provided (not null)
             if (venueName) {
                 const neutralKey = venueName.toLowerCase();
                 venue = this.neutralVenues.get(neutralKey);
@@ -1747,19 +1783,19 @@ module.exports = NodeHelper.create({
                         }
                     }
                 }
-                
-                if (venue) {
-                    const result = {
-                        stadiumName: venueName || venue.name,
-                        name: venueName || venue.name,
-                        latitude: venue.latitude,
-                        longitude: venue.longitude,
-                        team: venue.team,
-                        postCode: venue.postCode || null
-                    };
-                    this.venueCache.set(cacheKey, result);
-                    return result;
-                }
+            }
+            
+            if (venue) {
+                const result = {
+                    stadiumName: venueName || venue.name,
+                    name: venueName || venue.name,
+                    latitude: venue.latitude,
+                    longitude: venue.longitude,
+                    team: venue.team,
+                    postCode: venue.postCode || null
+                };
+                this.venueCache.set(cacheKey, result);
+                return result;
             }
 
             // First, try exact team name match in scottishGrounds
@@ -2346,5 +2382,748 @@ module.exports = NodeHelper.create({
                 message: error.message
             });
         }
-    }
+    },
+
+    // Extract IATA/ICAO code from airport name
+    // Looks for 3-4 letter codes typically found in airport names like "Copenhagen CPH" or "Airport (ABC)"
+    _extractIATACode: function(airportName) {
+        if (!airportName) return 'N/A';
+        // Try to find 3-4 letter uppercase code in parentheses: "Name (ABC)"
+        let match = airportName.match(/\(([A-Z]{3,4})\)/);
+        if (match) return match[1];
+        // Try to find 3-4 letter uppercase code at end of string after space: "Name ABC"
+        match = airportName.match(/\s([A-Z]{3,4})$/);
+        if (match) return match[1];
+        // Try to find 3-4 letter uppercase code after dash: "Name - ABC"
+        match = airportName.match(/[-–]\s*([A-Z]{3,4})\s*$/);
+        if (match) return match[1];
+        return 'N/A';
+    },
+
+    // Fetch airports within 200-mile radius of stadium (Large + Medium only)
+    _majorAirports: [
+   
+        //--------- UNITED KINGDOM -----------------------//
+        { name: "London Heathrow", iataCode: "LHR", lat: 51.4700, lon: -0.4543, country: "United Kingdom", city: "London", postCode: "TW6 2GA" },
+        { name: "London Gatwick", iataCode: "LGW", lat: 51.1537, lon: -0.1821, country: "United Kingdom", city: "Gatwick", postCode: "RH6 0NP" },
+        { name: "London Stansted", iataCode: "STN", lat: 51.8860, lon: 0.2375, country: "United Kingdom", city: "Stansted", postCode: "CM24 1QW" },
+        { name: "London Luton", iataCode: "LTN", lat: 51.8745, lon: -0.3658, country: "United Kingdom", city: "Luton", postCode: "LU2 9LY" },
+        { name: "London City Airport", iataCode: "LCY", lat: 51.5048, lon: -0.0555, country: "United Kingdom", city: "London", postCode: "E16 1AR" },
+        { name: "London Southend", iataCode: "SEN", lat: 51.5720, lon: 0.6947, country: "United Kingdom", city: "Southend-on-Sea", postCode: "SS7 1AP" },
+        { name: "Manchester Airport", iataCode: "MAN", lat: 53.3635, lon: -2.2743, country: "United Kingdom", city: "Manchester", postCode: "M90 1QX" },
+        { name: "Birmingham Airport", iataCode: "BHX", lat: 52.4539, lon: -1.7476, country: "United Kingdom", city: "Birmingham", postCode: "B26 3QJ" },
+        { name: "Glasgow Airport", iataCode: "GLA", lat: 55.8642, lon: -4.4330, country: "United Kingdom", city: "Glasgow", postCode: "PA3 2ST" },
+        { name: "Edinburgh Airport", iataCode: "EDI", lat: 55.9500, lon: -3.3724, country: "United Kingdom", city: "Edinburgh", postCode: "EH12 9DN" },
+        { name: "Liverpool Airport", iataCode: "LPL", lat: 53.3874, lon: -2.8408, country: "United Kingdom", city: "Liverpool", postCode: "L24 1YD" },
+        { name: "Leeds Bradford", iataCode: "LBA", lat: 53.8675, lon: -1.6604, country: "United Kingdom", city: "Leeds", postCode: "LS19 7TU" },
+        { name: "Newcastle Airport", iataCode: "NCL", lat: 55.0375, lon: -1.6919, country: "United Kingdom", city: "Newcastle", postCode: "NE13 8BT" },
+        { name: "Bristol Airport", iataCode: "BRS", lat: 51.3857, lon: -2.7185, country: "United Kingdom", city: "Bristol", postCode: "BS48 3DY" },
+        { name: "Southampton Airport", iataCode: "SOU", lat: 50.9502, lon: -1.3572, country: "United Kingdom", city: "Southampton", postCode: "SO18 2NL" },
+        { name: "Belfast International", iataCode: "BFS", lat: 54.6575, lon: -6.2159, country: "United Kingdom", city: "Belfast", postCode: "BT29 4AB" },
+        { name: "Belfast City Airport", iataCode: "BHD", lat: 54.6181, lon: -5.8725, country: "United Kingdom", city: "Belfast", postCode: "BT3 9JH" },
+        { name: "East Midlands Airport", iataCode: "EMA", lat: 52.8236, lon: -1.3281, country: "United Kingdom", city: "Nottingham", postCode: "DE74 2SA" },
+        { name: "Prestwick Airport", iataCode: "PIK", lat: 55.5086, lon: -4.5869, country: "United Kingdom", city: "Ayrshire", postCode: "KA9 2PG" },
+        { name: "Aberdeen Airport", iataCode: "ABZ", lat: 57.2019, lon: -2.1979, country: "United Kingdom", city: "Aberdeen", postCode: "AB21 7DU" },
+        
+        //--------- IRELAND -----------------------//
+        { name: "Dublin Airport", iataCode: "DUB", lat: 53.4264, lon: -6.2499, country: "Ireland", city: "Dublin", postCode: "D17 C47W" },
+        { name: "Cork Airport", iataCode: "ORK", lat: 51.8413, lon: -8.4931, country: "Ireland", city: "Cork", postCode: "T12 X2C2" },
+        { name: "Shannon Airport", iataCode: "SNN", lat: 52.7022, lon: -8.9244, country: "Ireland", city: "Limerick", postCode: "V94 6PW" },
+        
+        //--------- FRANCE -----------------------//
+        { name: "Paris Charles de Gaulle", iataCode: "CDG", lat: 49.0097, lon: 2.5479, country: "France", city: "Paris", postCode: "95700" },
+        { name: "Paris Orly", iataCode: "ORY", lat: 48.7233, lon: 2.3792, country: "France", city: "Paris", postCode: "94390" },
+        { name: "Paris Beauvais", iataCode: "BVA", lat: 49.4544, lon: 2.5829, country: "France", city: "Beauvais", postCode: "60000" },
+        { name: "Lyon-Saint Exupéry", iataCode: "LYS", lat: 45.7261, lon: 5.0914, country: "France", city: "Lyon", postCode: "69125" },
+        { name: "Marseille", iataCode: "MRS", lat: 43.4394, lon: 5.2147, country: "France", city: "Marseille", postCode: "13700" },
+        { name: "Nice Côte d'Azur", iataCode: "NCE", lat: 43.6584, lon: 7.2158, country: "France", city: "Nice", postCode: "06206" },
+        { name: "Toulouse", iataCode: "TLS", lat: 43.6294, lon: 1.3633, country: "France", city: "Toulouse", postCode: "31000" },
+        { name: "Nantes", iataCode: "NTE", lat: 47.1585, lon: -1.6040, country: "France", city: "Nantes", postCode: "44340" },
+        { name: "Bordeaux", iataCode: "BOD", lat: 44.8283, lon: -0.6155, country: "France", city: "Bordeaux", postCode: "33700" },
+        { name: "Strasbourg Airport", iataCode: "SXB", lat: 48.5384, lon: 7.6279, country: "France", city: "Strasbourg", postCode: "67960" },
+        { name: "Montpellier Airport", iataCode: "MPL", lat: 43.5761, lon: 3.9629, country: "France", city: "Montpellier", postCode: "34130" },
+        { name: "Grenoble Airport", iataCode: "GNB", lat: 45.3589, lon: 5.3342, country: "France", city: "Grenoble", postCode: "38700" },
+        { name: "Biarritz Airport", iataCode: "BIQ", lat: 43.4534, lon: -1.5298, country: "France", city: "Biarritz", postCode: "64200" },
+        
+        //--------- NETHERLANDS -----------------------//
+        { name: "Amsterdam Schiphol", iataCode: "AMS", lat: 52.3086, lon: 4.7639, country: "Netherlands", city: "Amsterdam", postCode: "1118" },
+        { name: "Rotterdam Airport", iataCode: "RTM", lat: 51.9562, lon: 4.4432, country: "Netherlands", city: "Rotterdam", postCode: "3045" },
+        { name: "Eindhoven Airport", iataCode: "EIN", lat: 51.4504, lon: 5.3754, country: "Netherlands", city: "Eindhoven", postCode: "5657" },
+        { name: "Groningen Airport", iataCode: "GRQ", lat: 53.1196, lon: 6.5797, country: "Netherlands", city: "Groningen", postCode: "9730" },
+        
+        //--------- GERMANY -----------------------//
+        { name: "Frankfurt am Main", iataCode: "FRA", lat: 50.0379, lon: 8.5622, country: "Germany", city: "Frankfurt", postCode: "60547" },
+        { name: "Munich Franz Josef Strauss", iataCode: "MUC", lat: 48.3538, lon: 11.7861, country: "Germany", city: "Munich", postCode: "85356" },
+        { name: "Berlin Brandenburg", iataCode: "BER", lat: 52.3667, lon: 13.5019, country: "Germany", city: "Berlin", postCode: "12521" },
+        { name: "Hamburg Airport", iataCode: "HAM", lat: 53.6304, lon: 9.9914, country: "Germany", city: "Hamburg", postCode: "22335" },
+        { name: "Düsseldorf", iataCode: "DUS", lat: 51.2895, lon: 6.7671, country: "Germany", city: "Düsseldorf", postCode: "40474" },
+        { name: "Cologne/Bonn", iataCode: "CGN", lat: 50.8659, lon: 6.8744, country: "Germany", city: "Cologne", postCode: "51147" },
+        { name: "Stuttgart Airport", iataCode: "STR", lat: 48.6891, lon: 9.2210, country: "Germany", city: "Stuttgart", postCode: "70629" },
+        { name: "Hanover Airport", iataCode: "HAJ", lat: 52.4614, lon: 9.6900, country: "Germany", city: "Hanover", postCode: "30855" },
+        { name: "Nuremberg", iataCode: "NUE", lat: 49.4992, lon: 11.0748, country: "Germany", city: "Nuremberg", postCode: "90411" },
+        { name: "Dortmund Airport", iataCode: "DTM", lat: 51.5136, lon: 7.6161, country: "Germany", city: "Dortmund", postCode: "44319" },
+        { name: "Düsseldorf Weeze", iataCode: "NRN", lat: 51.4025, lon: 6.0819, country: "Germany", city: "Weeze", postCode: "47652" },
+        { name: "Memmingen Airport", iataCode: "MEM", lat: 47.9855, lon: 10.2289, country: "Germany", city: "Memmingen", postCode: "87766" },
+        { name: "Friedrichshafen Airport", iataCode: "FKB", lat: 47.6686, lon: 9.5145, country: "Germany", city: "Friedrichshafen", postCode: "88046" },
+        { name: "Leipzig/Halle Airport", iataCode: "LEJ", lat: 51.4186, lon: 12.2217, country: "Germany", city: "Leipzig", postCode: "04435" },
+        { name: "Dresden Airport", iataCode: "DRS", lat: 51.1310, lon: 13.7870, country: "Germany", city: "Dresden", postCode: "01109" },
+        
+        //--------- SPAIN -----------------------//
+        { name: "Madrid-Barajas", iataCode: "MAD", lat: 40.4719, lon: -3.6309, country: "Spain", city: "Madrid", postCode: "28042" },
+        { name: "Barcelona El Prat", iataCode: "BCN", lat: 41.2974, lon: 2.0833, country: "Spain", city: "Barcelona", postCode: "08820" },
+        { name: "Málaga-Costa del Sol", iataCode: "AGP", lat: 36.6749, lon: -3.7584, country: "Spain", city: "Málaga", postCode: "29130" },
+        { name: "Valencia", iataCode: "VLC", lat: 39.4897, lon: -0.4814, country: "Spain", city: "Valencia", postCode: "46940" },
+        { name: "Bilbao Airport", iataCode: "BIO", lat: 43.3006, lon: -2.9106, country: "Spain", city: "Bilbao", postCode: "48500" },
+        { name: "Seville Airport", iataCode: "SVQ", lat: 37.4180, lon: -5.8896, country: "Spain", city: "Seville", postCode: "41020" },
+        { name: "Alicante", iataCode: "ALC", lat: 38.2822, lon: -0.5544, country: "Spain", city: "Alicante", postCode: "03540" },
+        { name: "Palma de Mallorca", iataCode: "PMI", lat: 39.5517, lon: 2.7397, country: "Spain", city: "Palma", postCode: "07610" },
+        { name: "Ibiza Airport", iataCode: "IBZ", lat: 38.8728, lon: 1.3730, country: "Spain", city: "Ibiza", postCode: "07800" },
+        { name: "Zaragoza Airport", iataCode: "ZAZ", lat: 41.6663, lon: -1.0420, country: "Spain", city: "Zaragoza", postCode: "50012" },
+        { name: "Reus Airport", iataCode: "REU", lat: 41.1524, lon: 1.1704, country: "Spain", city: "Reus", postCode: "43204" },
+        
+        //--------- ITALY -----------------------//
+        { name: "Rome Fiumicino", iataCode: "FCO", lat: 41.8002, lon: 12.2388, country: "Italy", city: "Rome", postCode: "00054" },
+        { name: "Milan Malpensa", iataCode: "MXP", lat: 45.6306, lon: 8.7281, country: "Italy", city: "Milan", postCode: "21010" },
+        { name: "Rome Ciampino", iataCode: "CIA", lat: 41.7994, lon: 12.5949, country: "Italy", city: "Rome", postCode: "00040" },
+        { name: "Milan Linate", iataCode: "LIN", lat: 45.4627, lon: 9.2711, country: "Italy", city: "Milan", postCode: "20090" },
+        { name: "Venice Marco Polo", iataCode: "VCE", lat: 45.5050, lon: 12.3519, country: "Italy", city: "Venice", postCode: "30192" },
+        { name: "Bergamo Orio al Serio", iataCode: "BGY", lat: 45.6730, lon: 9.7007, country: "Italy", city: "Bergamo", postCode: "24050" },
+        { name: "Florence", iataCode: "FLR", lat: 43.8093, lon: 11.2050, country: "Italy", city: "Florence", postCode: "50012" },
+        { name: "Naples", iataCode: "NAP", lat: 40.8861, lon: 14.2910, country: "Italy", city: "Naples", postCode: "80144" },
+        { name: "Palermo Airport", iataCode: "PMO", lat: 38.1759, lon: 13.0913, country: "Italy", city: "Palermo", postCode: "90100" },
+        { name: "Catania Airport", iataCode: "CTA", lat: 37.4667, lon: 15.0694, country: "Italy", city: "Catania", postCode: "95100" },
+        { name: "Pisa Airport", iataCode: "PSA", lat: 43.6839, lon: 10.3927, country: "Italy", city: "Pisa", postCode: "56121" },
+        { name: "Bologna Airport", iataCode: "BLQ", lat: 44.5347, lon: 11.2889, country: "Italy", city: "Bologna", postCode: "40132" },
+        { name: "Venice Treviso Airport", iataCode: "TSF", lat: 45.6481, lon: 12.1964, country: "Italy", city: "Treviso", postCode: "31100" },
+        { name: "Verona Airport", iataCode: "VRN", lat: 45.3955, lon: 10.8886, country: "Italy", city: "Verona", postCode: "37014" },
+        { name: "Genova Airport", iataCode: "GOA", lat: 44.4128, lon: 8.8340, country: "Italy", city: "Genoa", postCode: "16154" },
+        
+        //--------- AUSTRIA -----------------------//
+        { name: "Vienna International", iataCode: "VIE", lat: 48.1202, lon: 16.5833, country: "Austria", city: "Vienna", postCode: "1300" },
+        
+        //--------- BELGIUM -----------------------//
+        { name: "Brussels-Zaventem", iataCode: "BRU", lat: 50.9013, lon: 4.4844, country: "Belgium", city: "Brussels", postCode: "1930" },
+        { name: "Brussels Charleroi", iataCode: "CRL", lat: 50.4517, lon: 4.4541, country: "Belgium", city: "Charleroi", postCode: "6001" },
+        
+        //--------- SWITZERLAND -----------------------//
+        { name: "Zurich Airport", iataCode: "ZRH", lat: 47.4582, lon: 8.5495, country: "Switzerland", city: "Zurich", postCode: "8058" },
+        { name: "Geneva Airport", iataCode: "GVA", lat: 46.2381, lon: 6.1093, country: "Switzerland", city: "Geneva", postCode: "1200" },
+        { name: "Basel/Mulhouse", iataCode: "BSL", lat: 47.5956, lon: 7.5296, country: "Switzerland", city: "Basel", postCode: "4056" },
+        
+        //--------- CZECH REPUBLIC -----------------------//
+        { name: "Prague Václav Havel", iataCode: "PRG", lat: 50.0008, lon: 14.2678, country: "Czech Republic", city: "Prague", postCode: "160 00" },
+        { name: "Brno Airport", iataCode: "BRQ", lat: 49.1500, lon: 16.6885, country: "Czech Republic", city: "Brno", postCode: "62000" },
+        
+        //--------- HUNGARY -----------------------//
+        { name: "Budapest Ferenc Liszt", iataCode: "BUD", lat: 47.4367, lon: 19.2458, country: "Hungary", city: "Budapest", postCode: "1675" },
+        
+        //--------- POLAND -----------------------//
+        { name: "Warsaw Chopin", iataCode: "WAW", lat: 52.1656, lon: 21.0214, country: "Poland", city: "Warsaw", postCode: "00-906" },
+        { name: "Krakow John Paul II", iataCode: "KRK", lat: 50.0794, lon: 19.7794, country: "Poland", city: "Kraków", postCode: "32-083" },
+        { name: "Wroclaw Airport", iataCode: "WRO", lat: 51.1011, lon: 16.8855, country: "Poland", city: "Wroclaw", postCode: "54254" },
+        { name: "Gdansk Lech Walesa", iataCode: "GDN", lat: 54.3755, lon: 18.4467, country: "Poland", city: "Gdansk", postCode: "80299" },
+        { name: "Katowice Airport", iataCode: "KTW", lat: 50.2747, lon: 19.0800, country: "Poland", city: "Katowice", postCode: "40150" },
+        
+        //--------- SLOVAKIA -----------------------//
+        { name: "Bratislava Airport", iataCode: "BTS", lat: 48.1694, lon: 17.2072, country: "Slovakia", city: "Bratislava", postCode: "02100" },
+        
+        //--------- ROMANIA -----------------------//
+        { name: "Bucharest Otopeni", iataCode: "OTP", lat: 44.5715, lon: 26.0840, country: "Romania", city: "Bucharest", postCode: "077106" },
+        
+        //--------- BULGARIA -----------------------//
+        { name: "Sofia Airport", iataCode: "SOF", lat: 42.6977, lon: 23.4117, country: "Bulgaria", city: "Sofia", postCode: "1540" },
+        { name: "Burgas Airport", iataCode: "BOJ", lat: 42.5047, lon: 27.5144, country: "Bulgaria", city: "Burgas", postCode: "8000" },
+        
+        //--------- PORTUGAL -----------------------//
+        { name: "Lisbon Portela", iataCode: "LIS", lat: 38.7813, lon: -9.1359, country: "Portugal", city: "Lisbon", postCode: "1700" },
+        { name: "Porto Airport", iataCode: "OPO", lat: 41.2409, lon: -8.6716, country: "Portugal", city: "Porto", postCode: "4470" },
+        { name: "Faro Airport", iataCode: "FAO", lat: 37.0144, lon: -7.9743, country: "Portugal", city: "Faro", postCode: "8005" },
+        
+        //--------- GREECE -----------------------//
+        { name: "Athens International", iataCode: "ATH", lat: 37.9364, lon: 23.9445, country: "Greece", city: "Athens", postCode: "19019" },
+        { name: "Thessaloniki", iataCode: "SKG", lat: 40.5191, lon: 22.9708, country: "Greece", city: "Thessaloniki", postCode: "55103" },
+        
+        //--------- DENMARK -----------------------//
+        { name: "Copenhagen Airport", iataCode: "CPH", lat: 55.6181, lon: 12.6561, country: "Denmark", city: "Copenhagen", postCode: "2770" },
+        { name: "Billund Airport", iataCode: "BLL", lat: 55.7403, lon: 9.1519, country: "Denmark", city: "Billund", postCode: "7190" },
+        { name: "Aalborg Airport", iataCode: "AAL", lat: 57.0922, lon: 9.8521, country: "Denmark", city: "Aalborg", postCode: "9400" },
+        { name: "Aarhus Airport", iataCode: "AAR", lat: 56.3001, lon: 10.6186, country: "Denmark", city: "Aarhus", postCode: "8260" },
+        
+        //--------- SWEDEN -----------------------//
+        { name: "Stockholm Arlanda", iataCode: "ARN", lat: 59.6519, lon: 17.9289, country: "Sweden", city: "Stockholm", postCode: "19045" },
+        { name: "Gothenburg Landvetter", iataCode: "GOT", lat: 57.6627, lon: 12.2799, country: "Sweden", city: "Gothenburg", postCode: "43800" },
+        { name: "Malmö Airport", iataCode: "MMX", lat: 55.5289, lon: 13.3698, country: "Sweden", city: "Malmö", postCode: "23145" },
+        
+        //--------- NORWAY -----------------------//
+        { name: "Oslo Airport", iataCode: "OSL", lat: 60.1939, lon: 11.1004, country: "Norway", city: "Oslo", postCode: "2061" },
+        { name: "Bergen Airport", iataCode: "BGO", lat: 60.2934, lon: 5.2181, country: "Norway", city: "Bergen", postCode: "5217" },
+        { name: "Stavanger Airport", iataCode: "SVG", lat: 58.8853, lon: 5.6378, country: "Norway", city: "Stavanger", postCode: "4055" },
+        { name: "Trondheim Airport", iataCode: "TRD", lat: 63.4569, lon: 10.9247, country: "Norway", city: "Trondheim", postCode: "7521" },
+        
+        //--------- FINLAND -----------------------//
+        { name: "Helsinki-Vantaa", iataCode: "HEL", lat: 60.3172, lon: 25.0482, country: "Finland", city: "Helsinki", postCode: "1300" },
+        { name: "Turku Airport", iataCode: "TKU", lat: 60.5141, lon: 22.2627, country: "Finland", city: "Turku", postCode: "20100" },
+        { name: "Tampere Airport", iataCode: "TMP", lat: 61.4142, lon: 23.6053, country: "Finland", city: "Tampere", postCode: "33100" },
+        
+        //--------- LATVIA -----------------------//
+        { name: "Riga International", iataCode: "RIX", lat: 56.9239, lon: 23.9711, country: "Latvia", city: "Riga", postCode: "1053" },
+        
+        //--------- LITHUANIA -----------------------//
+        { name: "Vilnius Airport", iataCode: "VNO", lat: 54.6341, lon: 25.2867, country: "Lithuania", city: "Vilnius", postCode: "02100" },
+        
+        //--------- ESTONIA -----------------------//
+        { name: "Tallinn Airport", iataCode: "TLL", lat: 59.4133, lon: 24.8328, country: "Estonia", city: "Tallinn", postCode: "12101" },
+        
+        //--------- CROATIA -----------------------//
+        { name: "Split Airport", iataCode: "SPU", lat: 43.2406, lon: 16.4409, country: "Croatia", city: "Split", postCode: "21217" },
+        { name: "Rijeka Airport", iataCode: "RJK", lat: 45.2185, lon: 14.5753, country: "Croatia", city: "Rijeka", postCode: "51000" },
+        { name: "Dubrovnik Airport", iataCode: "DBV", lat: 42.5623, lon: 18.2684, country: "Croatia", city: "Dubrovnik", postCode: "20000" },
+        
+        //--------- BOSNIA AND HERZEGOVINA -----------------------//
+        { name: "Sarajevo Airport", iataCode: "SJJ", lat: 43.8163, lon: 18.3911, country: "Bosnia and Herzegovina", city: "Sarajevo", postCode: "71000" },
+        { name: "Mostar Airport", iataCode: "OMO", lat: 43.2039, lon: 17.8228, country: "Bosnia and Herzegovina", city: "Mostar", postCode: "88000" },
+        
+        //--------- SERBIA -----------------------//
+        { name: "Belgrade Nikola Tesla", iataCode: "BEG", lat: 44.8184, lon: 20.2781, country: "Serbia", city: "Belgrade", postCode: "11000" },
+        { name: "Niš Constantine Great", iataCode: "NIS", lat: 43.3437, lon: 21.8458, country: "Serbia", city: "Niš", postCode: "18000" },
+        
+        //--------- MONTENEGRO -----------------------//
+        { name: "Podgorica Airport", iataCode: "TGD", lat: 42.0606, lon: 19.2611, country: "Montenegro", city: "Podgorica", postCode: "81000" },
+        { name: "Tivat Airport", iataCode: "TIV", lat: 42.3916, lon: 18.3478, country: "Montenegro", city: "Tivat", postCode: "85320" },
+        
+        //--------- KOSOVO -----------------------//
+        { name: "Pristina Airport", iataCode: "PRN", lat: 42.5722, lon: 21.0279, country: "Kosovo", city: "Pristina", postCode: "10000" },
+        
+        //--------- NORTH MACEDONIA -----------------------//
+        { name: "Skopje Airport", iataCode: "SKP", lat: 41.9156, lon: 21.6283, country: "North Macedonia", city: "Skopje", postCode: "1000" },
+        
+        //--------- ALBANIA -----------------------//
+        { name: "Tirana Nënë Tereza", iataCode: "TIA", lat: 41.4176, lon: 19.7203, country: "Albania", city: "Tirana", postCode: "1000" },
+        
+        //--------- TURKEY -----------------------//
+        { name: "Istanbul Airport", iataCode: "IST", lat: 41.2619, lon: 28.7298, country: "Turkey", city: "Istanbul", postCode: "34830" },
+        
+        //--------- ISRAEL -----------------------//
+        { name: "Tel Aviv Ben Gurion", iataCode: "TLV", lat: 32.0053, lon: 34.7677, country: "Israel", city: "Tel Aviv", postCode: "7015001" },
+        
+        //--------- UNITED ARAB EMIRATES -----------------------//
+        { name: "Dubai International", iataCode: "DXB", lat: 25.2528, lon: 55.3644, country: "United Arab Emirates", city: "Dubai", postCode: "NA" },
+        
+        //--------- HONG KONG -----------------------//
+        { name: "Hong Kong International", iataCode: "HKG", lat: 22.3080, lon: 113.9185, country: "Hong Kong", city: "Hong Kong", postCode: "999077" },
+        
+        //--------- SINGAPORE -----------------------//
+        { name: "Singapore Changi", iataCode: "SIN", lat: 1.3644, lon: 103.9915, country: "Singapore", city: "Singapore", postCode: "18140" },
+        
+        //--------- JAPAN -----------------------//
+        { name: "Tokyo Haneda", iataCode: "HND", lat: 35.5494, lon: 139.7798, country: "Japan", city: "Tokyo", postCode: "144-0041" },
+        
+        //--------- AUSTRALIA -----------------------//
+        { name: "Sydney Kingsford Smith", iataCode: "SYD", lat: -33.9461, lon: 151.1772, country: "Australia", city: "Sydney", postCode: "2020" },
+        { name: "Melbourne Airport", iataCode: "MEL", lat: -37.6733, lon: 144.8433, country: "Australia", city: "Melbourne", postCode: "3045" },
+        
+        //--------- CANADA -----------------------//
+        { name: "Toronto Pearson", iataCode: "YYZ", lat: 43.6777, lon: -79.6248, country: "Canada", city: "Toronto", postCode: "M1P 2V6" },
+        
+        //--------- UNITED STATES -----------------------//
+        { name: "New York JFK", iataCode: "JFK", lat: 40.6413, lon: -73.7781, country: "United States", city: "New York", postCode: "11430" },
+        { name: "Los Angeles International", iataCode: "LAX", lat: 33.9425, lon: -118.4081, country: "United States", city: "Los Angeles", postCode: "90045" },
+        { name: "San Francisco International", iataCode: "SFO", lat: 37.6213, lon: -122.3790, country: "United States", city: "San Francisco", postCode: "94128" },
+        
+        //--------- MEXICO -----------------------//
+        { name: "Mexico City International", iataCode: "MEX", lat: 19.4326, lon: -99.0730, country: "Mexico", city: "Mexico City", postCode: "15620" },
+        
+        //--------- BRAZIL -----------------------//
+        { name: "São Paulo Guarulhos", iataCode: "GIG", lat: -22.8129, lon: -43.2431, country: "Brazil", city: "Rio de Janeiro", postCode: "20000" },
+        
+        //--------- ARGENTINA -----------------------//
+        { name: "Buenos Aires Ezeiza", iataCode: "EZE", lat: -34.8222, lon: -58.5358, country: "Argentina", city: "Buenos Aires", postCode: "1802" },
+        
+        //--------- EGYPT -----------------------//
+        { name: "Cairo International", iataCode: "CAI", lat: 30.1219, lon: 31.4056, country: "Egypt", city: "Cairo", postCode: "11518" },
+        
+        //--------- SOUTH AFRICA -----------------------//
+        { name: "Johannesburg OR Tambo", iataCode: "JNB", lat: -26.1367, lon: 28.2411, country: "South Africa", city: "Johannesburg", postCode: "1627" }
+
+    ],
+
+    _calculateDistance: function(lat1, lon1, lat2, lon2) {
+        const R = 3959;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    },
+
+    getAirportsInfo: async function(config) {
+        try {
+            console.log(`[MMM-MyTeams-DriveToMatch] *** getAirportsInfo called with config:`, config);
+
+            // Extract venue coordinates from config.venue (sent by frontend)
+            if (!config.venue || typeof config.venue.latitude !== 'number' || typeof config.venue.longitude !== 'number') {
+                throw new Error("Stadium coordinates required");
+            }
+
+            const { latitude, longitude } = config.venue;
+            const airportSearchRadiusMeters = config.airportSearchRadiusMeters ?? 322000;
+            const maxRadiusMiles = airportSearchRadiusMeters / 1609.344;
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] Searching major airports within ${airportSearchRadiusMeters}m (${maxRadiusMiles.toFixed(2)} miles) of ${config.venue.name} (${latitude}, ${longitude})`);
+
+
+            const airports = this._majorAirports
+                .map(airport => ({
+                    name: airport.name,
+                    iataCode: airport.iataCode,
+                    latitude: airport.lat,
+                    longitude: airport.lon,
+                    country: airport.country || "Unknown",
+                    city: airport.city || "Unknown",
+                    postCode: airport.postCode || "N/A",
+                    distance: this._calculateDistance(latitude, longitude, airport.lat, airport.lon)
+                }))
+                .filter(airport => airport.distance <= maxRadiusMiles)
+                .sort((a, b) => {
+                    if (a.country !== b.country) return a.country.localeCompare(b.country);
+                    return a.distance - b.distance;
+                });
+
+                console.log(`[MMM-MyTeams-DriveToMatch] ✓ Found ${airports.length} major airports within ${airportSearchRadiusMeters}m (${maxRadiusMiles.toFixed(2)} miles)`);
+
+            if (airports.length > 0) {
+                airports.slice(0, 5).forEach((a, idx) => {
+                    console.log(`  ${idx + 1}. ${a.name} (${a.iataCode}) - ${a.distance.toFixed(1)} miles away`);
+                });
+            }
+
+            console.log(`[MMM-MyTeams-DriveToMatch] Sending AIRPORTS_INFO notification with ${airports.length} airports`);
+            
+            // Send back to frontend with AIRPORTS_INFO notification (matches frontend expectation)
+            this.sendSocketNotification("AIRPORTS_INFO", {
+                instanceId: config.instanceId,
+                airports: airports,
+                venue: config.venue,
+                opponent: config.opponent,
+                date: config.date,
+                fetchedAt: new Date().toISOString()
+            });
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] AIRPORTS_INFO notification sent`);
+            
+            if (airports.length > 0) {
+                const html = this._generateAirportsHTML({
+                    airports: airports,
+                    venue: config.venue,
+                    opponent: config.opponent,
+                    date: config.date,
+                    airportSearchRadiusMeters: airportSearchRadiusMeters
+                });
+                
+                this.sendSocketNotification("SAVE_AIRPORTS_SHEET", {
+                    instanceId: config.instanceId,
+                    html: html,
+                    venueName: config.venue.name,
+                    opponent: config.opponent,
+                    date: config.date
+                });
+            }
+
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error fetching airports:", error.message);
+            this.sendSocketNotification("AIRPORTS_INFO_ERROR", {
+                instanceId: config.instanceId,
+                message: error.message
+            });
+        }
+    },
+
+    _generateAirportsHTML: function(data) {
+        const { airports, venue, opponent, date } = data;
+        const maxRadius = 200;
+        
+        let airportsTable = "<tbody>";
+        let currentCountry = "";
+        let rowNum = 1;
+        
+        for (const airport of airports) {
+            if (airport.distance > maxRadius) continue;
+            
+            if (airport.country !== currentCountry) {
+                if (currentCountry !== "") {
+                    airportsTable += "</tbody></table>";
+                }
+                currentCountry = airport.country;
+                airportsTable += `<h3 style="margin-top: 25px; margin-bottom: 10px; color: #008B8B; border-bottom: 2px solid #008B8B; padding-bottom: 5px;">🌍 ${currentCountry}</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: #20B2AA; color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: bold; font-size: 14px;">#</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; font-size: 14px;">Airport</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; font-size: 14px;">IATA</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; font-size: 14px;">City</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; font-size: 14px;">Postal Code</th>
+                        <th style="padding: 12px; text-align: left; font-weight: bold; font-size: 14px;">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+                rowNum = 1;
+            }
+            
+            airportsTable += `<tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 12px; font-size: 14px;">${rowNum}</td>
+                <td style="padding: 12px; font-size: 14px;">${airport.name}</td>
+                <td style="padding: 12px; font-size: 14px;"><strong>${airport.iataCode}</strong></td>
+                <td style="padding: 12px; font-size: 14px;">${airport.city || "N/A"}</td>
+                <td style="padding: 12px; font-size: 14px;">${airport.postCode || "N/A"}</td>
+                <td style="padding: 12px; font-size: 14px;">${airport.distance.toFixed(1)} mi</td>
+            </tr>`;
+            rowNum++;
+        }
+        
+        if (currentCountry !== "") {
+            airportsTable += "</tbody></table>";
+        }
+        
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>International Airports - ${opponent}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Roboto', Arial, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        .header { background: linear-gradient(135deg, #008B8B, #20B2AA); color: white; padding: 25px; text-align: center; }
+        .header h1 { margin-bottom: 10px; font-size: 32px; }
+        .header p { font-size: 16px; opacity: 0.95; margin: 3px 0; }
+        .toolbar { padding: 15px 25px; background: #f9f9f9; border-bottom: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px; }
+        .print-btn { background: #008B8B; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background 0.3s; }
+        .print-btn:hover { background: #006666; }
+        @media print { .toolbar { display: none; } body { padding: 0; background: white; } .container { box-shadow: none; } }
+        .content { padding: 25px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .info-card { background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #008B8B; }
+        .info-card h3 { color: #008B8B; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+        .info-card p { font-size: 16px; font-weight: bold; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th { background: #008B8B; color: white; padding: 12px; text-align: left; font-weight: bold; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        tr:hover { background: #f5f5f5; }
+        h2 { margin: 25px 0 15px 0; color: #008B8B; }
+        .footer { background: #f0f0f0; padding: 15px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; }
+        @media (max-width: 768px) { .info-grid { grid-template-columns: 1fr; } .toolbar { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✈️ International Airports</h1>
+            <p>${opponent} vs ${venue.name}</p>
+            <p>${date || 'Match Date'}</p>
+        </div>
+        
+        <div class="toolbar">
+            <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        </div>
+        
+        <div class="content">
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>📍 Venue</h3>
+                    <p>${venue.name}</p>
+                </div>
+                <div class="info-card">
+                    <h3>🏟️ Opponent</h3>
+                    <p>${opponent}</p>
+                </div>
+                <div class="info-card">
+                    <h3>✈️ Airports Found</h3>
+                    <p>${airports.filter(a => a.distance <= maxRadius).length} within 200 miles</p>
+                </div>
+            </div>
+            
+            <h2>📋 Airports by Country (within 200 miles)</h2>
+            ${airportsTable}
+        </div>
+        
+        <div class="footer">
+            <p>Generated automatically - Please confirm airport operations and flight availability directly with airlines</p>
+            <p>Airport data includes major international and regional airports served by budget and full-service carriers</p>
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        return html;
+    },
+
+    // Save airports information to HTML report
+    saveAirportsSheet: function(payload) {
+        try {
+            const { instanceId, html, venueName, opponent, date } = payload;
+            
+            if (!html) {
+                throw new Error("No HTML content provided");
+            }
+
+            // Create filename with timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const sanitizedVenue = (venueName || 'airports').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `airports_${sanitizedVenue}_${timestamp}.html`;
+            const filepath = path.join(__dirname, "mySavedRoutes", filename);
+            
+            // Ensure mySavedRoutes directory exists
+            const dirPath = path.join(__dirname, "mySavedRoutes");
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+                console.log(`[MMM-MyTeams-DriveToMatch] Created mySavedRoutes directory`);
+            }
+
+            fs.writeFileSync(filepath, html, 'utf8');
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] ✓ Airports report saved: ${filename}`);
+            
+            this.sendSocketNotification("AIRPORTS_SHEET_SAVED", {
+                instanceId: instanceId,
+                filename: filename,
+                filepath: filepath
+            });
+
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error saving airports report:", error.message);
+            this.sendSocketNotification("AIRPORTS_SHEET_ERROR", {
+                instanceId: payload.instanceId,
+                message: error.message
+            });
+        }
+    },
+
+    // Fetch parking info within 50km of stadium
+    getParkingInfo: async function(config) {
+        try {
+            console.log(`[MMM-MyTeams-DriveToMatch] *** getParkingInfo called with config:`, config);
+            
+            if (!this.apiTomTomKey) {
+                throw new Error("TomTom API key not configured");
+            }
+
+            if (!config.venue || typeof config.venue.latitude !== 'number' || typeof config.venue.longitude !== 'number') {
+                throw new Error("Stadium coordinates required");
+            }
+
+            const { latitude, longitude } = config.venue;
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] Fetching parking within 3.2km of ${config.venue.name} (${latitude}, ${longitude})`);
+
+            // Use TomTom Search API to find parking facilities within 2 miles (3.2 km)
+            // categorySet: 7313=parking garage, 7369=open parking area
+            const url = `https://api.tomtom.com/search/2/nearbySearch/.json` +
+                `?key=${encodeURIComponent(this.apiTomTomKey)}` +
+                `&lat=${latitude}` +
+                `&lon=${longitude}` +
+                `&radius=3200` +
+                `&categorySet=7313,7369` +
+                `&limit=20`;
+
+            console.log(`[MMM-MyTeams-DriveToMatch] Parking API URL: ${url.replace(this.apiTomTomKey, 'REDACTED')}`);
+
+            const response = await doFetch(url, {}, 15000, 2);
+            const data = await response.json();
+            
+            if (!data.results || !Array.isArray(data.results)) {
+                throw new Error("Invalid API response structure");
+            }
+            
+            const parking = data.results.map(result => {
+                const distanceMeters = result.dist || 0;
+                const distanceMiles = distanceMeters * 0.000621371;
+                
+                return {
+                    name: result.poi?.name || result.address?.freeformAddress || "Parking",
+                    distance: distanceMiles,
+                    latitude: result.position?.lat,
+                    longitude: result.position?.lon,
+                    address: result.address?.freeformAddress || "",
+                    postcode: result.address?.postalCode || "",
+                    phone: result.poi?.phone || "",
+                    parkingType: result.poi?.classifications?.[0]?.names?.[0]?.nameLocale || "Parking"
+                };
+            });
+
+            parking.sort((a, b) => a.distance - b.distance);
+
+            console.log(`[MMM-MyTeams-DriveToMatch] ✓ Found ${parking.length} parking locations within 3.2km`);
+            
+            this.sendSocketNotification("PARKING_INFO", {
+                instanceId: config.instanceId,
+                parkingSpots: parking,
+                opponent: config.opponent || "",
+                date: config.date || "",
+                matchDate: config.date || "",
+                venue: config.venue,
+                fetchedAt: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error fetching parking:", error.message);
+            this.sendSocketNotification("PARKING_INFO_ERROR", {
+                instanceId: config.instanceId,
+                message: error.message
+            });
+        }
+    },
+
+    saveParkingSheet: async function(payload) {
+        try {
+            const { instanceId, html, venueName } = payload;
+            
+            if (!html) {
+                throw new Error("No HTML content provided");
+            }
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const sanitizedVenue = (venueName || 'parking').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `parking_${sanitizedVenue}_${timestamp}.html`;
+            const filepath = path.join(__dirname, "mySavedRoutes", filename);
+            
+            const dirPath = path.join(__dirname, "mySavedRoutes");
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+            }
+
+            fs.writeFileSync(filepath, html, 'utf8');
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] ✓ Parking report saved: ${filename}`);
+            
+            this.sendSocketNotification("PARKING_SHEET_SAVED", {
+                instanceId: instanceId,
+                filename: filename,
+                filepath: filepath
+            });
+
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error saving parking report:", error.message);
+            this.sendSocketNotification("PARKING_SHEET_ERROR", {
+                instanceId: payload.instanceId,
+                message: error.message
+            });
+        }
+    },
+
+    // Fetch charging station info within 50km of stadium
+    getChargingInfo: async function(config) {
+        try {
+            console.log(`[MMM-MyTeams-DriveToMatch] *** getChargingInfo called with config:`, config);
+            
+            if (!this.apiTomTomKey) {
+                throw new Error("TomTom API key not configured");
+            }
+
+            if (!config.venue || typeof config.venue.latitude !== 'number' || typeof config.venue.longitude !== 'number') {
+                throw new Error("Stadium coordinates required");
+            }
+
+            const { latitude, longitude } = config.venue;
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] Fetching EV charging stations within 5km of ${config.venue.name} (${latitude}, ${longitude})`);
+
+            // Use TomTom category 7309 (Electric Vehicle Charging Station) for accurate results
+            const url = `https://api.tomtom.com/search/2/nearbySearch/.json` +
+                `?key=${encodeURIComponent(this.apiTomTomKey)}` +
+                `&lat=${latitude}` +
+                `&lon=${longitude}` +
+                `&radius=5000` +
+                `&categorySet=7309` +
+                `&limit=30`;
+
+            console.log(`[MMM-MyTeams-DriveToMatch] Charging API URL: ${url.replace(this.apiTomTomKey, 'REDACTED')}`);
+
+            const response = await doFetch(url, {}, 15000, 2);
+            const data = await response.json();
+            
+            if (!data.results || !Array.isArray(data.results)) {
+                throw new Error("Invalid API response structure");
+            }
+            
+            const charging = data.results.map(result => {
+                const distanceMeters = result.dist || 0;
+                const distanceMiles = distanceMeters * 0.000621371;
+                
+                return {
+                    name: result.poi?.name || result.address?.freeformAddress || "EV Charging Station",
+                    distance: distanceMiles,
+                    latitude: result.position?.lat,
+                    longitude: result.position?.lon,
+                    address: result.address?.freeformAddress || "",
+                    postcode: result.address?.postalCode || "",
+                    phone: result.poi?.phone || "",
+                    connectorTypes: result.poi?.classifications?.[0]?.names?.[0]?.nameLocale || "Various",
+                    operator: result.poi?.brandName || result.poi?.name?.split(' ').slice(0, 2).join(' ') || "Unknown"
+                };
+            });
+
+            charging.sort((a, b) => a.distance - b.distance);
+
+            console.log(`[MMM-MyTeams-DriveToMatch] ✓ Found ${charging.length} EV charging stations within 3.2km`);
+            
+            this.sendSocketNotification("CHARGING_INFO", {
+                instanceId: config.instanceId,
+                chargingStations: charging,
+                opponent: config.opponent || "",
+                date: config.date || "",
+                venue: config.venue,
+                fetchedAt: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error fetching charging info:", error.message);
+            this.sendSocketNotification("CHARGING_INFO_ERROR", {
+                instanceId: config.instanceId,
+                message: error.message
+            });
+        }
+    },
+
+    saveChargingSheet: async function(payload) {
+        try {
+            const { instanceId, html, venueName } = payload;
+            
+            if (!html) {
+                throw new Error("No HTML content provided");
+            }
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const sanitizedVenue = (venueName || 'charging').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `charging_${sanitizedVenue}_${timestamp}.html`;
+            const filepath = path.join(__dirname, "mySavedRoutes", filename);
+            
+            const dirPath = path.join(__dirname, "mySavedRoutes");
+            if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+            }
+
+            fs.writeFileSync(filepath, html, 'utf8');
+            
+            console.log(`[MMM-MyTeams-DriveToMatch] ✓ Charging report saved: ${filename}`);
+            
+            this.sendSocketNotification("CHARGING_SHEET_SAVED", {
+                instanceId: instanceId,
+                filename: filename,
+                filepath: filepath
+            });
+
+        } catch (error) {
+            console.error("[MMM-MyTeams-DriveToMatch] Error saving charging report:", error.message);
+            this.sendSocketNotification("CHARGING_SHEET_ERROR", {
+                instanceId: payload.instanceId,
+                message: error.message
+            });
+        }
+    },
+
+
 });

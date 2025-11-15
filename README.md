@@ -1,8 +1,9 @@
 # MMM-MyTeams-DriveToMatch
 
 **Author:** gitgitaway
+**Version** v 1.5.1
 
-Automatic fixture detection with real-time traffic routes to match venues using [TomTom API](https://developer.tomtom.com/user/me/apps) , [TheSportsDB](https://www.thesportsdb.com/) & [FootballWebPages](https://www.footballwebpages.co.uk/). Supports all football teams and leagues (domestic and European competitions).
+Automatic fixture detection with real-time traffic routes to match venues using [TomTom API](https://developer.tomtom.com/user/me/apps) , [TheSportsDB](https://www.thesportsdb.com/) & [FootballWebPages](https://www.footballwebpages.co.uk/). Supports all football teams and leagues (world wide domestic and European competitions).
 
 ## 🎬 Screenshots
 
@@ -17,6 +18,7 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 
 ## ✨ Features
 
+### Core Features
 - 🎯 **Automatic Fixture Detection** - Shows your next match
 - 🚗 **Real-time Traffic Routes** - Fastest and shortest routes with live traffic data
 - 🌍 **9 Languages** - English, Spanish, French, German, Italian, Dutch, Portuguese, Scottish Gaelic, Irish Gaelic
@@ -29,6 +31,13 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 - ⛽ **Fuel Cost Estimation** - Estimated fuel costs per route
 - 🧪 **Date Testing** - Override date for testing specific fixtures
 - 🎨 **Customizable Styling** - Team-themed styling and color overrides
+
+### Match Information Features
+- 🅿️ **Parking Finder** - Find nearby parking with interactive maps
+- ⚡ **EV Charging Stations** - Locate electric vehicle charging points
+- ✈️ **Airport Finder** - Discover nearby airports for away fixtures (smart hide option for nearby venues)
+- 🖨️ **Print Functionality** - Print all information sheets directly from browser
+- 🎨 **Improved Icon Visibility** - Professional PNG icons (15×15px) with minimal design for compact display
 
 ## 📚 Documentation
 
@@ -49,6 +58,14 @@ Automatic fixture detection with real-time traffic routes to match venues using 
 | **[ROUTES.md](documentation/ROUTES.md)** | 📍 Saving routes with turn-by-turn directions |
 | **[WAYPOINTS.md](documentation/WAYPOINTS.md)** | 🌉 Bridge detection, ferries, and waypoints |
 | **[NEUTRAL_VENUE_QUICK_START.md](documentation/NEUTRAL_VENUE_QUICK_START.md)** | ⚽ Setting up neutral venue overrides for cup finals |
+| **[PCA_ICONS_FEATURE_README.md](documentation/PCA%20_ICONS_FEATURES_README.md)** | 🅿️ ⚡ ✈️ Parking, Charging, and Airport information sheets with print functionality |
+
+### Data Quality Tools
+
+| Tool | Purpose |
+|------|---------|
+| **[STADIUM_VERIFICATION_USER_GUIDE.md](documentation/STADIUM_VERIFICATION_USER_GUIDE.md)** | 🏟️ Complete guide to stadium coordinate verification and correction script (located in `tools/`) |
+| **[STADIUM-VERIFICATION_QUICK_REFERENCE.md](documentation/STADIUM-VERIFICATION_QUICK_REFERENCE.md)** | ⚡ Quick command reference for stadium verification script |
 
 ### Reference & Support
 
@@ -176,6 +193,10 @@ For advanced features and customization:
         
         // ===== STADIUM UPDATES =====
         enableStadiumUpdateNotification: true,           // Show update button
+        
+        // ===== POI DISPLAY OPTIONS =====
+        hideAirportIfNearby: false,                     // Hide airport icon if home < 300 miles from venue
+        airportProximityMiles: 300,                     // Threshold distance in miles for hiding airport icon
         
         // ===== THEME =====
         darkMode: null,                                  // null=auto, true=dark, false=light
@@ -332,6 +353,21 @@ config: {
             }
         ]
     }
+}
+```
+
+### Example 8: Smart Airport Icon Display
+
+```javascript
+config: {
+    apiTomTomKey: "YOUR_TOMTOM_API_KEY",
+    homeLatitude: 57.35066,
+    homeLongitude: -3.59404,
+    teamName: "Celtic",
+    
+    // Hide airport icon for nearby venues (less than 300 miles)
+    hideAirportIfNearby: true,
+    airportProximityMiles: 300,  // Customize threshold as needed
 }
 ```
 

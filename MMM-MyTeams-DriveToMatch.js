@@ -77,6 +77,10 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         borderColorOverride: null,   // e.g., "#FFFFFF" to force white borders
         opacityOverride: null,       // e.g., 1.0 to force full opacity
 
+        // POI Display Options
+        hideAirportIfNearby: false,  // Hide airport icon if home location is less than 300 miles from venue
+        airportProximityMiles: 300,  // Threshold distance in miles for hiding airport icon
+
         // ===== NEUTRAL VENUE OVERRIDE =====
         neutralVenueOverrides: {
             enabled: false,
@@ -122,9 +126,11 @@ Module.register("MMM-MyTeams-DriveToMatch", {
     error: null,
     fixtureTimer: null,
     routeTimer: null,
+    fixtureLoadTimeout: null,
     retryCount: 0,
-    lastRouteUpdate: null, // Timestamp of last route update
-    instanceId: null, // Unique identifier for this module instance
+    lastRouteUpdate: null,
+    instanceId: null,
+    routeError: null,
 
     // Start the module
     start: function() {
@@ -165,6 +171,16 @@ Module.register("MMM-MyTeams-DriveToMatch", {
         setTimeout(() => {
             this.fetchNextFixture();
             this.scheduleUpdates();
+            
+            // Add timeout for initial fixture fetch - show error if not received within 30 seconds
+            this.fixtureLoadTimeout = setTimeout(() => {
+                if (this.loading && !this.nextFixture) {
+                    this.error = "Unable to load fixture data - please check configuration";
+                    this.loading = false;
+                    Log.error(this.name + ": Fixture fetch timeout after 30 seconds");
+                    this.updateDom();
+                }
+            }, 30000);
         }, initialDelay);
     },
 
@@ -362,6 +378,33 @@ Module.register("MMM-MyTeams-DriveToMatch", {
             case "ROUTE_SAVE_ERROR":
                 this.handleRouteSaveError(payload);
                 break;
+            case "PARKING_INFO":
+                this.handleParkingInfo(payload);
+                break;
+            case "PARKING_SHEET_SAVED":
+                this.handleParkingSheetSaved(payload);
+                break;
+            case "PARKING_INFO_ERROR":
+                this.handleParkingInfoError(payload);
+                break;
+            case "CHARGING_INFO":
+                this.handleChargingInfo(payload);
+                break;
+            case "CHARGING_SHEET_SAVED":
+                this.handleChargingSheetSaved(payload);
+                break;
+            case "CHARGING_INFO_ERROR":
+                this.handleChargingInfoError(payload);
+                break;
+            case "AIRPORTS_INFO":
+                this.handleAirportsInfo(payload);
+                break;
+            case "AIRPORTS_SHEET_SAVED":
+                this.handleAirportsSheetSaved(payload);
+                break;
+            case "AIRPORTS_INFO_ERROR":
+                this.handleAirportsInfoError(payload);
+                break;
             case "STADIUM_UPDATE_PROGRESS":
                 this.handleStadiumUpdateProgress(payload);
                 break;
@@ -383,6 +426,12 @@ Module.register("MMM-MyTeams-DriveToMatch", {
             Log.info(this.name + ": Received fixture data", data);
         }
 
+        // Clear initial load timeout since we got data
+        if (this.fixtureLoadTimeout) {
+            clearTimeout(this.fixtureLoadTimeout);
+            this.fixtureLoadTimeout = null;
+        }
+
         this.nextFixture = data;
         this.error = null;
         this.retryCount = 0;
@@ -400,6 +449,13 @@ Module.register("MMM-MyTeams-DriveToMatch", {
     handleFixtureError: function(payload) {
         const error = payload.message || payload;
         Log.error(this.name + ": Fixture error: " + error);
+        
+        // Clear initial load timeout since we got an error
+        if (this.fixtureLoadTimeout) {
+            clearTimeout(this.fixtureLoadTimeout);
+            this.fixtureLoadTimeout = null;
+        }
+        
         this.error = this.translate("FAILED_TO_LOAD") + ": " + error;
         this.loading = false;
         this.updateDom();
@@ -567,10 +623,955 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                     </div>
                     ${this.nextFixture.competition ? `<div class="competition">${this.nextFixture.competition}</div>` : ''}
                 </div>
+                <div class="action-buttons-container">
+                    <button class="action-button parking-button" title="Parking Information" data-venue-lat="${venue ? venue.latitude : ''}" data-venue-lng="${venue ? venue.longitude : ''}" data-venue-name="${venue ? venue.stadiumName : ''}"><img src="modules/MMM-MyTeams-DriveToMatch/images/parking.png" alt="Parking"></button>
+                    <button class="action-button charging-button" title="Charging Stations" data-venue-lat="${venue ? venue.latitude : ''}" data-venue-lng="${venue ? venue.longitude : ''}" data-venue-name="${venue ? venue.stadiumName : ''}"><img src="modules/MMM-MyTeams-DriveToMatch/images/charging.png" alt="Charging"></button>
+                    ${this.shouldShowAirportButton(venue) ? `<button class="action-button airports-button" title="Nearby Airports" data-venue-lat="${venue ? venue.latitude : ''}" data-venue-lng="${venue ? venue.longitude : ''}" data-venue-name="${venue ? venue.stadiumName : ''}"><img src="modules/MMM-MyTeams-DriveToMatch/images/airport.png" alt="Airports"></button>` : ''}
+                </div>
             </div>
         `;
 
+        // Helper function to add button click handler
+        const addButtonHandler = (buttonClass, callback) => {
+            const btn = header.querySelector(`.${buttonClass}`);
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (venue && venue.latitude && venue.longitude) {
+                        callback(venue);
+                    } else {
+                        Log.warn(this.name + ": Venue coordinates not available");
+                        this.sendNotification("SHOW_ALERT", {
+                            type: "notification",
+                            title: "Location Information",
+                            message: "Venue coordinates not available",
+                            timer: 3000
+                        });
+                    }
+                });
+            }
+        };
+
+        // Add click handlers for all buttons
+        addButtonHandler.call(this, 'parking-button', this.requestParkingInfo.bind(this));
+        addButtonHandler.call(this, 'charging-button', this.requestChargingInfo.bind(this));
+        addButtonHandler.call(this, 'airports-button', this.requestAirportsInfo.bind(this));
+
         return header;
+    },
+
+    // Calculate distance between two coordinates in miles
+    calculateDistance: function(lat1, lon1, lat2, lon2) {
+        const R = 3959;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    },
+
+    // Determine if airport button should be shown based on distance
+    shouldShowAirportButton: function(venue) {
+        if (!this.config.hideAirportIfNearby || !venue) {
+            return true;
+        }
+        
+        const distanceToVenue = this.calculateDistance(
+            this.config.homeLatitude,
+            this.config.homeLongitude,
+            venue.latitude,
+            venue.longitude
+        );
+        
+        return distanceToVenue > this.config.airportProximityMiles;
+    },
+
+    // Request parking information from node helper
+    requestParkingInfo: function(venue) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Requesting parking info for " + venue.stadiumName);
+        }
+        
+        this.sendSocketNotification("GET_PARKING_INFO", {
+            instanceId: this.instanceId,
+            venue: {
+                name: venue.stadiumName,
+                latitude: venue.latitude,
+                longitude: venue.longitude,
+                postCode: venue.postCode || ""
+            },
+            opponent: this.nextFixture.opponent,
+            date: this.nextFixture.date,
+            debug: this.config.debug
+        });
+    },
+
+    // Handle parking info data received from node helper
+    handleParkingInfo: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Received parking info with " + (payload.parkingSpots ? payload.parkingSpots.length : 0) + " spots");
+        }
+        
+        try {
+            // Generate parking sheet HTML
+            const parkingHtml = this.generateParkingSheet(payload);
+            
+            if (this.config.debug) {
+                Log.info(this.name + ": Generated parking HTML (" + parkingHtml.length + " bytes)");
+            }
+            
+            // Save to file via node helper
+            this.sendSocketNotification("SAVE_PARKING_SHEET", {
+                instanceId: this.instanceId,
+                html: parkingHtml,
+                venueName: payload.venue.name,
+                opponent: payload.opponent,
+                date: payload.date
+            });
+            
+            if (this.config.debug) {
+                Log.info(this.name + ": Sent SAVE_PARKING_SHEET notification");
+            }
+        } catch (error) {
+            Log.error(this.name + ": Error generating parking sheet: " + error.message);
+            console.error(error);
+            this.sendNotification("SHOW_ALERT", {
+                type: "notification",
+                title: "Parking Information",
+                message: "Failed to generate parking information: " + error.message,
+                timer: 5000
+            });
+        }
+    },
+
+    // Generate parking info sheet as HTML
+    generateParkingSheet: function(parkingData) {
+        const venue = parkingData.venue;
+        const parkingSpots = parkingData.parkingSpots || [];
+        const opponent = parkingData.opponent;
+        const matchDate = new Date(parkingData.date);
+        const tomTomApiKey = this.config.apiTomTomKey || '';
+        
+        // Sort parking spots by distance
+        const sortedSpots = parkingSpots.slice(0, 10).sort((a, b) => a.distance - b.distance);
+        
+        // Generate parking table rows
+        let tableRows = sortedSpots.map((spot, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${this._escapeHtml(spot.name)}</td>
+                <td>${this._escapeHtml(spot.street || spot.address || 'N/A')}</td>
+                <td>${this._escapeHtml(spot.postcode || 'N/A')}</td>
+                <td>${spot.distance.toFixed(2)} mi</td>
+                <td>${this._escapeHtml(spot.parkingType || 'Parking')}</td>
+                <td>${this._escapeHtml(spot.phone || 'Contact venue')}</td>
+            </tr>
+        `).join('');
+        
+        // Generate HTML document
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Information - ${this._escapeHtml(opponent)}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Roboto', Arial, sans-serif; 
+            background: #f5f5f5; 
+            color: #333;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header {
+            background: linear-gradient(135deg, #018749, #FFD700);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+        }
+        .header h1 { margin-bottom: 5px; font-size: 28px; }
+        .header p { font-size: 16px; opacity: 0.95; }
+        .content { padding: 20px; }
+        #map { width: 100%; height: 400px; border-radius: 8px; margin-bottom: 30px; border: 2px solid #018749; }
+        .leaflet-popup-content { font-size: 13px !important; }
+        .leaflet-popup-content div { margin: 3px 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .info-card { background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #018749; }
+        .info-card h3 { color: #018749; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+        .info-card p { font-size: 16px; font-weight: bold; color: #333; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #018749;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        tr:hover { background: #f5f5f5; }
+        tr:last-child td { border-bottom: none; }
+        .free { color: #4CAF50; font-weight: bold; }
+        .paid { color: #ff9800; font-weight: bold; }
+        .toolbar { padding: 15px 20px; background: #f9f9f9; border-bottom: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px; }
+        .print-btn { background: #018749; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.3s; }
+        .print-btn:hover { background: #005a33; }
+        .footer { 
+            background: #f0f0f0; 
+            padding: 15px; 
+            text-align: center; 
+            color: #666; 
+            font-size: 12px;
+            border-radius: 0 0 8px 8px;
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .toolbar { display: none; }
+        }
+        @media (max-width: 768px) {
+            .info-grid { grid-template-columns: 1fr; }
+            table { font-size: 12px; }
+            td, th { padding: 8px; }
+            .toolbar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🅿️ Parking Information</h1>
+            <p>${this._escapeHtml(opponent)} - ${venue.name}</p>
+            <p>${matchDate.toLocaleDateString('en-GB', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</p>
+        </div>
+        
+        <div class="toolbar">
+            <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        </div>
+        
+        <div class="content">
+            <div id="map"></div>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>📍 Venue</h3>
+                    <p>${this._escapeHtml(venue.name)}</p>
+                </div>
+                <div class="info-card">
+                    <h3>🏟️ Match</h3>
+                    <p>${this._escapeHtml(opponent)}</p>
+                </div>
+                <div class="info-card">
+                    <h3>🅿️ Parking Found</h3>
+                    <p>${sortedSpots.length} car parks</p>
+                </div>
+            </div>
+            
+            <h2 style="margin-bottom: 15px; color: #018749;">📋 Nearest Car Parks (10 closest)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Car Park Name</th>
+                        <th>Street Address</th>
+                        <th>Post Code</th>
+                        <th>Distance to Venue</th>
+                        <th>Parking Type</th>
+                        <th>Cost Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>Generated automatically for ${this._escapeHtml(opponent)} match at ${this._escapeHtml(venue.name)}</p>
+            <p>Parking data sourced from OpenStreetMap | Map by Leaflet</p>
+            <p>Please verify opening hours and pricing directly with car park operators before visiting</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Initialize Leaflet map
+        function initializeMap() {
+            try {
+                // Create map centered on venue
+                const map = L.map('map').setView([${venue.latitude}, ${venue.longitude}], 14);
+                
+                // Add OpenStreetMap tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+                
+                // Custom marker HTML with emoji
+                function createMarkerIcon(emoji, color) {
+                    return L.divIcon({
+                        html: \`<div style="background: \${color}; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #FFD700; display: flex; align-items: center; justify-content: center; font-size: 20px;">\${emoji}</div>\`,
+                        iconSize: [40, 40],
+                        className: 'custom-marker'
+                    });
+                }
+                
+                // Add venue marker
+                L.marker([${venue.latitude}, ${venue.longitude}], {
+                    icon: createMarkerIcon('🏟️', '#018749')
+                }).addTo(map)
+                    .bindPopup('<div style="font-weight: bold; font-size: 14px;">${this._escapeHtml(venue.name).replace(/'/g, "\\'")} </div><div>Match Venue</div>');
+                
+                // Add parking markers
+                ${sortedSpots.map((spot, idx) => `
+                L.marker([${spot.latitude}, ${spot.longitude}], {
+                    icon: createMarkerIcon('🅿️', '#FF9800')
+                }).addTo(map)
+                    .bindPopup('<div style="font-weight: bold; font-size: 14px;">${spot.name.replace(/'/g, "\\'")} (${idx + 1})</div><div>Type: ${(spot.parkingType || 'Parking').replace(/'/g, "\\'")}</div><div>Distance: ${spot.distance.toFixed(2)} mi</div><div>Phone: ${(spot.phone || 'Contact venue').replace(/'/g, "\\'")}</div>');
+                `).join('')}
+                
+                // Fit bounds to show all markers
+                ${sortedSpots.length > 0 ? `
+                const group = new L.featureGroup();
+                L.marker([${venue.latitude}, ${venue.longitude}]).addTo(group);
+                ${sortedSpots.map(spot => `L.marker([${spot.latitude}, ${spot.longitude}]).addTo(group);`).join('')}
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                ` : `map.setZoom(14);`}
+                
+            } catch (error) {
+                console.error('Map initialization error:', error);
+                document.getElementById('map').innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; color: #999; font-size: 14px;">⚠️ Map error: ' + error.message.substring(0, 50) + '...</div>';
+            }
+        }
+        
+        // Start map initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeMap);
+        } else {
+            setTimeout(initializeMap, 100);
+        }
+    </script>
+</body>
+</html>
+        `;
+        
+        return html;
+    },
+
+    // Helper to escape HTML special characters
+    _escapeHtml: function(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    // Handle parking sheet saved confirmation
+    handleParkingSheetSaved: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Parking sheet saved to " + payload.filename);
+        }
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "🅿️ Parking Information",
+            message: `Parking sheet saved as ${payload.filename}`,
+            timer: 4000
+        });
+    },
+
+    // Handle parking info error
+    handleParkingInfoError: function(payload) {
+        const error = payload.message || payload;
+        Log.error(this.name + ": Parking info error: " + error);
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Parking Information Error",
+            message: error,
+            timer: 5000
+        });
+    },
+
+    // ===== CHARGING STATIONS =====
+
+    // Request charging station information from node helper
+    requestChargingInfo: function(venue) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Requesting charging info for " + venue.stadiumName);
+        }
+        
+        this.sendSocketNotification("GET_CHARGING_INFO", {
+            instanceId: this.instanceId,
+            venue: {
+                name: venue.stadiumName,
+                latitude: venue.latitude,
+                longitude: venue.longitude,
+                postCode: venue.postCode || ""
+            },
+            opponent: this.nextFixture.opponent,
+            date: this.nextFixture.date,
+            debug: this.config.debug
+        });
+    },
+
+    // Handle charging info data received from node helper
+    handleChargingInfo: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Received charging info with " + (payload.chargingStations ? payload.chargingStations.length : 0) + " stations");
+        }
+        
+        try {
+            // Generate charging sheet HTML
+            const chargingHtml = this.generateChargingSheet(payload);
+            
+            if (this.config.debug) {
+                Log.info(this.name + ": Generated charging HTML (" + chargingHtml.length + " bytes)");
+            }
+            
+            // Save to file via node helper
+            this.sendSocketNotification("SAVE_CHARGING_SHEET", {
+                instanceId: this.instanceId,
+                html: chargingHtml,
+                venueName: payload.venue.name,
+                opponent: payload.opponent,
+                date: payload.date
+            });
+            
+            if (this.config.debug) {
+                Log.info(this.name + ": Sent SAVE_CHARGING_SHEET notification");
+            }
+        } catch (error) {
+            Log.error(this.name + ": Error generating charging sheet: " + error.message);
+            console.error(error);
+            this.sendNotification("SHOW_ALERT", {
+                type: "notification",
+                title: "Charging Information",
+                message: "Failed to generate charging information: " + error.message,
+                timer: 5000
+            });
+        }
+    },
+
+    // Generate charging info sheet as HTML
+    generateChargingSheet: function(chargingData) {
+        const venue = chargingData.venue;
+        const chargingStations = chargingData.chargingStations || [];
+        const opponent = chargingData.opponent;
+        const matchDate = new Date(chargingData.date);
+        const tomTomApiKey = this.config.apiTomTomKey || '';
+        
+        // Sort charging stations by distance
+        const sortedStations = chargingStations.slice(0, 10).sort((a, b) => a.distance - b.distance);
+        
+        // Generate charging table rows
+        let tableRows = sortedStations.map((station, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${this._escapeHtml(station.name)}</td>
+                <td>${this._escapeHtml(station.address || 'N/A')}</td>
+                <td>${station.distance.toFixed(2)} mi</td>
+                <td>${this._escapeHtml(station.connectorTypes || 'Various')}</td>
+                <td>${this._escapeHtml(station.operator || 'N/A')}</td>
+            </tr>
+        `).join('');
+        
+        // Generate HTML document with Leaflet map
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charging Stations - ${this._escapeHtml(opponent)}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Roboto', Arial, sans-serif; 
+            background: #f5f5f5; 
+            color: #333;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #8BC34A);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+        }
+        .header h1 { margin-bottom: 5px; font-size: 28px; }
+        .header p { font-size: 16px; opacity: 0.95; }
+        .content { padding: 20px; }
+        #map { width: 100%; height: 400px; border-radius: 8px; margin-bottom: 30px; border: 2px solid #4CAF50; }
+        .leaflet-popup-content { font-size: 13px !important; }
+        .leaflet-popup-content div { margin: 3px 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .info-card { background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #4CAF50; }
+        .info-card h3 { color: #4CAF50; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+        .info-card p { font-size: 16px; font-weight: bold; color: #333; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        tr:hover { background: #f5f5f5; }
+        tr:last-child td { border-bottom: none; }
+        .toolbar { padding: 15px 20px; background: #f9f9f9; border-bottom: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px; }
+        .print-btn { background: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.3s; }
+        .print-btn:hover { background: #2e7d32; }
+        .footer { 
+            background: #f0f0f0; 
+            padding: 15px; 
+            text-align: center; 
+            color: #666; 
+            font-size: 12px;
+            border-radius: 0 0 8px 8px;
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .toolbar { display: none; }
+        }
+        @media (max-width: 768px) {
+            .info-grid { grid-template-columns: 1fr; }
+            table { font-size: 12px; }
+            td, th { padding: 8px; }
+            .toolbar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Charging Stations</h1>
+            <p>${this._escapeHtml(opponent)} - ${venue.name}</p>
+            <p>${matchDate.toLocaleDateString('en-GB', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</p>
+        </div>
+        
+        <div class="toolbar">
+            <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        </div>
+        
+        <div class="content">
+            <div id="map"></div>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>📍 Venue</h3>
+                    <p>${this._escapeHtml(venue.name)}</p>
+                </div>
+                <div class="info-card">
+                    <h3>🏟️ Match</h3>
+                    <p>${this._escapeHtml(opponent)}</p>
+                </div>
+                <div class="info-card">
+                    <h3>⚡ Stations Found</h3>
+                    <p>${sortedStations.length} charging points</p>
+                </div>
+            </div>
+            
+            <h2 style="margin-bottom: 15px; color: #4CAF50;">📋 Nearest Charging Stations (10 closest)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Station Name</th>
+                        <th>Address</th>
+                        <th>Distance to Venue</th>
+                        <th>Connector Types</th>
+                        <th>Operator</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>Generated automatically for ${this._escapeHtml(opponent)} match at ${this._escapeHtml(venue.name)}</p>
+            <p>Charging station data sourced from TomTom | Map by Leaflet</p>
+            <p>Please verify availability and connector compatibility before visiting</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Initialize Leaflet map
+        function initializeMap() {
+            try {
+                // Create map centered on venue
+                const map = L.map('map').setView([${venue.latitude}, ${venue.longitude}], 14);
+                
+                // Add OpenStreetMap tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+                
+                // Custom marker HTML with emoji
+                function createMarkerIcon(emoji, color) {
+                    return L.divIcon({
+                        html: \`<div style="background: \${color}; width: 40px; height: 40px; border-radius: 50%; border: 3px solid #FFD700; display: flex; align-items: center; justify-content: center; font-size: 20px;">\${emoji}</div>\`,
+                        iconSize: [40, 40],
+                        className: 'custom-marker'
+                    });
+                }
+                
+                // Add venue marker
+                L.marker([${venue.latitude}, ${venue.longitude}], {
+                    icon: createMarkerIcon('🏟️', '#4CAF50')
+                }).addTo(map)
+                    .bindPopup('<div style="font-weight: bold; font-size: 14px;">${this._escapeHtml(venue.name).replace(/'/g, "\\'")} </div><div>Match Venue</div>');
+                
+                // Add charging station markers
+                ${sortedStations.map((station, idx) => `
+                L.marker([${station.latitude}, ${station.longitude}], {
+                    icon: createMarkerIcon('⚡', '#4CAF50')
+                }).addTo(map)
+                    .bindPopup('<div style="font-weight: bold; font-size: 14px;">${station.name.replace(/'/g, "\\'")} (${idx + 1})</div><div>Operator: ${(station.operator || 'N/A').replace(/'/g, "\\'")}</div><div>Distance: ${station.distance.toFixed(2)} mi</div><div>Connectors: ${(station.connectorTypes || 'Various').replace(/'/g, "\\'")}</div>');
+                `).join('')}
+                
+                // Fit bounds to show all markers
+                ${sortedStations.length > 0 ? `
+                const group = new L.featureGroup();
+                L.marker([${venue.latitude}, ${venue.longitude}]).addTo(group);
+                ${sortedStations.map(station => `L.marker([${station.latitude}, ${station.longitude}]).addTo(group);`).join('')}
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                ` : `map.setZoom(14);`}
+                
+            } catch (error) {
+                console.error('Map initialization error:', error);
+                document.getElementById('map').innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; color: #999; font-size: 14px;">⚠️ Map error: ' + error.message.substring(0, 50) + '...</div>';
+            }
+        }
+        
+        // Start map initialization when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeMap);
+        } else {
+            setTimeout(initializeMap, 100);
+        }
+    </script>
+</body>
+</html>
+        `;
+        
+        return html;
+    },
+
+    // Handle charging sheet saved confirmation
+    handleChargingSheetSaved: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Charging sheet saved to " + payload.filename);
+        }
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "⚡ Charging Stations",
+            message: `Charging sheet saved as ${payload.filename}`,
+            timer: 4000
+        });
+    },
+
+    // Handle charging info error
+    handleChargingInfoError: function(payload) {
+        const error = payload.message || payload;
+        Log.error(this.name + ": Charging info error: " + error);
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Charging Information Error",
+            message: error,
+            timer: 5000
+        });
+    },
+
+    // ===== AIRPORTS =====
+
+    // Request airport information from node helper
+    requestAirportsInfo: function(venue) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Requesting airports info for " + venue.stadiumName);
+        }
+        
+        this.sendSocketNotification("GET_AIRPORTS_INFO", {
+            instanceId: this.instanceId,
+            venue: {
+                name: venue.stadiumName,
+                latitude: venue.latitude,
+                longitude: venue.longitude,
+                postCode: venue.postCode || ""
+            },
+            opponent: this.nextFixture.opponent,
+            date: this.nextFixture.date,
+            debug: this.config.debug
+        });
+    },
+
+    // Handle airports info data received from node helper
+    handleAirportsInfo: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Received airports info with " + (payload.airports ? payload.airports.length : 0) + " airports");
+        }
+        
+        try {
+            // Generate airports sheet HTML
+            const airportsHtml = this.generateAirportsSheet(payload);
+            
+            if (this.config.debug) {
+                Log.info(this.name + ": Generated airports HTML (" + airportsHtml.length + " bytes)");
+            }
+            
+            // Save to file via node helper
+            this.sendSocketNotification("SAVE_AIRPORTS_SHEET", {
+                instanceId: this.instanceId,
+                html: airportsHtml,
+                venueName: payload.venue.name,
+                opponent: payload.opponent,
+                date: payload.date
+            });
+            
+            if (this.config.debug) {
+                Log.info(this.name + ": Sent SAVE_AIRPORTS_SHEET notification");
+            }
+        } catch (error) {
+            Log.error(this.name + ": Error generating airports sheet: " + error.message);
+            console.error(error);
+            this.sendNotification("SHOW_ALERT", {
+                type: "notification",
+                title: "Airports Information",
+                message: "Failed to generate airports information: " + error.message,
+                timer: 5000
+            });
+        }
+    },
+
+    // Generate airports info sheet as HTML (table format only)
+    generateAirportsSheet: function(airportsData) {
+        console.log(`[DEBUG] Airport generation starting with ${(airportsData.airports || []).length} airports`);
+        const venue = airportsData.venue;
+        const airports = airportsData.airports || [];
+        console.log(`[DEBUG] Airports array length: ${airports.length}`);
+        const opponent = airportsData.opponent;
+        const matchDate = new Date(airportsData.date);
+        
+        // Sort airports by distance
+        const sortedAirports = airports.slice(0, 10).sort((a, b) => a.distance - b.distance);
+        
+        // Generate airports table rows
+        let tableRows = sortedAirports.map((airport, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${this._escapeHtml(airport.name)}</td>
+                <td>${this._escapeHtml(airport.iataCode || 'N/A')}</td>
+                <td>${this._escapeHtml(airport.city || 'N/A')}</td>
+                <td>${this._escapeHtml(airport.country || 'N/A')}</td>
+                <td>${airport.distance.toFixed(2)} mi</td>
+            </tr>
+        `).join('');
+        
+        // Generate HTML document (table only, no map)
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>International Airports - ${this._escapeHtml(opponent)}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Roboto', Arial, sans-serif; 
+            background: #f5f5f5; 
+            color: #333;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header {
+            background: linear-gradient(135deg, #008B8B, #20B2AA);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+        }
+        .header h1 { margin-bottom: 5px; font-size: 28px; }
+        .header p { font-size: 16px; opacity: 0.95; }
+        .toolbar { padding: 15px 20px; background: #f9f9f9; border-bottom: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px; }
+        .print-btn { background: #008B8B; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.3s; }
+        .print-btn:hover { background: #006666; }
+        .content { padding: 20px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .info-card { background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 4px solid #008B8B; }
+        .info-card h3 { color: #008B8B; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+        .info-card p { font-size: 16px; font-weight: bold; color: #333; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #008B8B;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        tr:hover { background: #f5f5f5; }
+        tr:last-child td { border-bottom: none; }
+        .footer { 
+            background: #f0f0f0; 
+            padding: 15px; 
+            text-align: center; 
+            color: #666; 
+            font-size: 12px;
+            border-radius: 0 0 8px 8px;
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .toolbar { display: none; }
+        }
+        @media (max-width: 768px) {
+            .info-grid { grid-template-columns: 1fr; }
+            table { font-size: 12px; }
+            td, th { padding: 8px; }
+            .toolbar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✈️ International Airports</h1>
+            <p>${this._escapeHtml(opponent)} - ${venue.name}</p>
+            <p>${matchDate.toLocaleDateString('en-GB', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</p>
+        </div>
+        
+        <div class="toolbar">
+            <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        </div>
+        
+        <div class="content">
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>📍 Venue</h3>
+                    <p>${this._escapeHtml(venue.name)}</p>
+                </div>
+                <div class="info-card">
+                    <h3>🏟️ Match</h3>
+                    <p>${this._escapeHtml(opponent)}</p>
+                </div>
+                <div class="info-card">
+                    <h3>✈️ Airports Found</h3>
+                    <p>${sortedAirports.length} international airports</p>
+                </div>
+            </div>
+            
+            <h2 style="margin-bottom: 15px; color: #008B8B;">📋 Nearest International Airports (10 closest)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Airport Name</th>
+                        <th>IATA Code</th>
+                        <th>City</th>
+                        <th>Country</th>
+                        <th>Distance to Venue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>Generated automatically for ${this._escapeHtml(opponent)} match at ${this._escapeHtml(venue.name)}</p>
+            <p>Airport data sourced from TomTom</p>
+            <p>Please confirm airport operations and flight availability directly with airlines</p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        
+        return html;
+    },
+
+    // Handle airports sheet saved confirmation
+    handleAirportsSheetSaved: function(payload) {
+        if (this.config.debug) {
+            Log.info(this.name + ": Airports sheet saved to " + payload.filename);
+        }
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "✈️ Airports",
+            message: `Airports sheet saved as ${payload.filename}`,
+            timer: 4000
+        });
+    },
+
+    // Handle airports info error
+    handleAirportsInfoError: function(payload) {
+        const error = payload.message || payload;
+        Log.error(this.name + ": Airports info error: " + error);
+        
+        this.sendNotification("SHOW_ALERT", {
+            type: "notification",
+            title: "Airports Information Error",
+            message: error,
+            timer: 5000
+        });
     },
 
     // Create routes section
@@ -617,18 +1618,6 @@ Module.register("MMM-MyTeams-DriveToMatch", {
             `;
         }
 
-        // Add fuel cost if available
-        let fuelCostHtml = '';
-        if (this.config.showFuelCost && route.fuelCost !== null && route.fuelCost !== undefined) {
-            const currencySymbol = this.translate("CURRENCY_SYMBOL");
-            fuelCostHtml = `
-                <div class="fuel-cost">
-                    <i class="fa fa-gas-pump"></i>
-                    <span>${this.translate("FUEL")}: ${currencySymbol}${route.fuelCost.toFixed(2)}</span>
-                </div>
-            `;
-        }
-
         // Determine route type label
         let routeTypeLabel = '';
         let routeTypeClass = '';
@@ -654,10 +1643,12 @@ Module.register("MMM-MyTeams-DriveToMatch", {
                 <div class="time-distance">
                     <span class="duration">${duration}</span>
                     <span class="distance">${distance}</span>
-                    ${this.config.showDelay && delayText ? `<span class="delay">+${delayText} ${this.translate("DELAY")}</span>` : ''}
                 </div>
                 ${waypointsHtml}
-                ${fuelCostHtml}
+                <div class="delay-fuel-row">
+                    ${this.config.showDelay && delayText ? `<span class="delay">+${delayText} ${this.translate("DELAY")}</span>` : ''}
+                    ${this.config.showFuelCost && route.fuelCost !== null && route.fuelCost !== undefined ? `<div class="fuel-cost"><i class="fa fa-gas-pump"></i><span>${this.translate("FUEL")}: ${this.translate("CURRENCY_SYMBOL")}${route.fuelCost.toFixed(2)}</span></div>` : ''}
+                </div>
             </div>
         `;
 
